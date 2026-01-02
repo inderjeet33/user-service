@@ -4,6 +4,8 @@ import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.UserEntity;
 import com.prerana.userservice.enums.Role;
 import com.prerana.userservice.enums.UserType;
+import com.prerana.userservice.exceptions.MobileNumberOTPNotVerified;
+import com.prerana.userservice.exceptions.UserAlreadyExistException;
 import com.prerana.userservice.repository.UserRepository;
 import com.prerana.userservice.store.TempUserStore;
 import com.prerana.userservice.util.PasswordEncoder;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +41,7 @@ public class AuthService {
     public void sendOtp(String mobileNumber) {
 
         if (userRepository.findByMobileNumber(mobileNumber).isPresent()) {
-            throw new RuntimeException("User already exists with this mobile number");
+            throw new UserAlreadyExistException();
         }
 
         otpService.generateAndSendOtp(mobileNumber);
@@ -64,9 +67,13 @@ public class AuthService {
     public void signup(SignUpRequestDto req) {
 
         if (!otpService.isMobileVerified(req.getMobileNumber())) {
-            throw new RuntimeException("Mobile number not OTP verified");
+            throw new MobileNumberOTPNotVerified("Mobile number not OTP verified");
         }
 
+        Optional<UserEntity> userByEmail = userRepository.findByEmail(req.getEmail());
+        if(userByEmail.isPresent()){
+            throw new UserAlreadyExistException("User already exists with this email");
+        }
         String tempPassword = tempStore.getPassword(req.getMobileNumber());
         if (tempPassword == null) {
             throw new RuntimeException("Password not set yet");
