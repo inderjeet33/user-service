@@ -32,4 +32,24 @@ public interface DonationOfferRepository extends JpaRepository<DonationOfferEnti
             @Param("start") LocalDateTime startOfDay,
             @Param("end") LocalDateTime endOfDay
     );
+
+    @Query("""
+        SELECT d FROM DonationOfferEntity d
+        JOIN d.user u
+        WHERE
+          (:search IS NULL OR
+             u.fullName ILIKE CONCAT('%', CAST(:search as text) , '%')
+             OR d.reason ILIKE CONCAT('%', CAST(:search as text) , '%')
+          )
+        AND (:category IS NULL OR d.donationCategory ILIKE :category)
+        AND (:type IS NULL OR d.type = :type)
+        AND (:status IS NULL OR d.status = :status)
+    """)
+    Page<DonationOfferEntity> search(
+            @Param("search") String search,
+            @Param("category") String category,
+            @Param("type") String type,
+            @Param("status") DonationOfferStatus status,
+            Pageable pageable
+    );
 }

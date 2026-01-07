@@ -160,6 +160,42 @@ public class DonationOfferService {
         populateReceiverDetailsInDto(pageDtos);
         return pageDtos;
     }
+    public Page<DonationOffersRequestDto> search(
+            int page,
+            int size,
+            String search,
+            String category,
+            String type,
+            DonationOfferStatus status
+    ) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("createdAt").descending()
+        );
+
+        Page<DonationOfferEntity> pageEntities =
+                donationOfferRepository.search(
+                        normalize(search),
+                        normalize(category),
+                        normalize(type),
+                        status,
+                        pageable
+                );
+
+        Page<DonationOffersRequestDto> pageDtos =
+                mapperUtil.toDtoPage(pageEntities);
+
+        populateReceiverDetailsInDto(pageDtos);
+
+        return pageDtos;
+    }
+
+    /* small helper */
+    private String normalize(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
     public List<DonationOffersRequestDto> getOffersByUser(Long userId) {
         List<DonationOffersRequestDto> dtos = mapperUtil.toDtoList(donationOfferRepository.findByUserId(userId));
         dtos.forEach(this::populateReceiverDetails);

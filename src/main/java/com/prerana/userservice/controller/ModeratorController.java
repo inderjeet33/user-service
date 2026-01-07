@@ -3,6 +3,7 @@ package com.prerana.userservice.controller;
 import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.ModeratorAssignmentEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.enums.DonationOfferStatus;
 import com.prerana.userservice.service.DonationOfferService;
 import com.prerana.userservice.service.ModeratorAssignmentService;
 import com.prerana.userservice.service.NGOProfileService;
@@ -73,16 +74,20 @@ public class ModeratorController {
 
     @GetMapping("/moderator/offers")
     public ResponseEntity<Page<DonationOffersRequestDto>> listDonationOffers(
-            @RequestParam(required = false) String city,
-            @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) DonationOfferStatus status
     ) {
-        Page<DonationOffersRequestDto> result = donationOfferService.search(page, size);
+        Page<DonationOffersRequestDto> result =
+                donationOfferService.search(page, size, search, category, type, status);
+
         return ResponseEntity.ok(result);
-//        Page<NgoProfile> result = ngoProfileService.search(city, category, page, size);
-//        return ResponseEntity.ok(result);
     }
+
 
     @GetMapping("/moderator/assignments/history")
     public ResponseEntity<Page<ModeratorAssignmentDto>> assignmentHistory(
