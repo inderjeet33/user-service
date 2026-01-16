@@ -5,6 +5,7 @@ import com.prerana.userservice.entity.GalleryImageEntity;
 import com.prerana.userservice.entity.NGOProfileEntity;
 import com.prerana.userservice.entity.UserEntity;
 import com.prerana.userservice.enums.GalleryStatus;
+import com.prerana.userservice.exceptions.NgoProfileMissingException;
 import com.prerana.userservice.repository.GalleryImageRepository;
 import com.prerana.userservice.repository.NGOProfileRepository;
 import com.prerana.userservice.repository.UserRepository;
@@ -19,9 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +46,49 @@ public class GalleryService {
                 .toList();
     }
 
+    @Transactional
+    public void approveImage(Long imageId)
+    {
+        Optional<GalleryImageEntity> entityOptional = galleryRepo.findById(imageId);
+        if(entityOptional.isPresent()){
+            GalleryImageEntity entity = entityOptional.get();
+            entity.setStatus(GalleryStatus.APPROVED);
+            entity.setRejectionReason(null);
+            galleryRepo.save(entity);
+        }
+    }
+
+    @Transactional
+    public void rejectImage(Long imageId, Map<String,String> body){
+        Optional<GalleryImageEntity> entityOptional = galleryRepo.findById(imageId);
+        if(entityOptional.isPresent()){
+            GalleryImageEntity galleryImageEntity = entityOptional.get();
+            galleryImageEntity.setRejectionReason(Objects.nonNull(body)? body.getOrDefault("reason","Image was not approved") : "Image was not approved");
+            galleryImageEntity.setStatus(GalleryStatus.REJECTED);
+            galleryRepo.save(galleryImageEntity);
+        }
+    }
+    public List<GalleryImageDto> findByStatusAndNgoId(Long ngoId,GalleryStatus gallerystatus)
+    {
+        Optional<NGOProfileEntity> ngoProfileEntity = ngoProfileRepository.findByUserId(ngoId);
+        String name;
+        if (ngoProfileEntity.isEmpty()) {
+            throw new NgoProfileMissingException();
+        } else {
+            name = ngoProfileEntity.get().getNgoName();
+        }
+
+        List<GalleryImageEntity> galleryImageEntities = galleryRepo.findByNgo_IdAndStatus(ngoId,gallerystatus);
+        return galleryImageEntities.stream().map(entity -> {
+           GalleryImageDto imageDto = new GalleryImageDto();
+           imageDto.setId(entity.getId());
+           imageDto.setCreatedAt(entity.getCreatedAt());
+           imageDto.setCaption(entity.getCaption());
+           imageDto.setImageUrl(entity.getImagePath());
+           imageDto.setNgoName(name);
+           return imageDto;
+        }).toList();
+    }
     /* NGO uploads image */
     @Transactional
     public void uploadImage(Long ngoId, MultipartFile file, String caption) throws IOException {
@@ -97,13 +139,35 @@ public class GalleryService {
 //        galleryRepo.save(img);
 //    }
 
-    public List<String> getImagesByOwnerId(Long ownerId){
-        //for now ngo is the only owner of images
+//    public List<String> getImagesByOwnerId(Long ownerId){
+//        //for now ngo is the only owner of images
+//
+//        return galleryRepo.findByNgo_Id(ownerId)
+//                .stream()
+//                .map(GalleryImageEntity::getImagePath)
+//                .toList();
+//    }
 
-        return galleryRepo.findByNgo_Id(ownerId)
-                .stream()
-                .map(GalleryImageEntity::getImagePath)
-                .toList();
+    public List<GalleryImageDto> getImagesByOwnerId(Long ownerId) {
+
+        Optional<NGOProfileEntity> ngoProfile = ngoProfileRepository.findByUserId(ownerId);
+        List<GalleryImageDto> images = new ArrayList<>();
+        if(ngoProfile.isPresent()) {
+            images = galleryRepo.findByNgo_Id(ownerId)
+                    .stream()
+                    .map(img -> {
+                        GalleryImageDto dto = new GalleryImageDto();
+                        dto.setId(img.getId());
+                        dto.setImageUrl(img.getImagePath());
+                        dto.setCaption(img.getCaption());
+                        dto.setNgoName(ngoProfile.get().getNgoName());
+                        dto.setStatus(img.getStatus().name());       // PENDING / APPROVED / REJECTED
+                        dto.setRejectReason(img.getRejectionReason()); // nullable
+                        return dto;
+                    })
+                    .toList();
+        }
+        return images;
     }
 
     private GalleryImageDto toDto(GalleryImageEntity e) {

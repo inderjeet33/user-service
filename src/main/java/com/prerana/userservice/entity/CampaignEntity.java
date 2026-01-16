@@ -34,6 +34,9 @@ public class CampaignEntity extends BaseEntity {
     private Double targetAmount;
     private LocalDateTime deadline;
 
+    private Double raisedAmount = 0.0;
+
+
     @Column(nullable = false)
     private String address;
 
@@ -50,4 +53,7 @@ public class CampaignEntity extends BaseEntity {
 
     private String mediaUrls; // JSON array of images/videos
     private String imageUrl;
+
+    private String beneficiaryType;
+    private Integer beneficiaryCount;
 }

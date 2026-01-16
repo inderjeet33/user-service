@@ -11,4 +11,6 @@ public class NgoDashboardStatsDto {
     private long completedDonations;
     private long pendingDonations;
     private Long campaigns;
+    private String activationStatus;
+    private String rejectedReason;
 }

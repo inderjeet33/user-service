@@ -1,9 +1,8 @@
 package com.prerana.userservice.service;
 
-import com.prerana.userservice.dto.CampaignPublicDto;
-import com.prerana.userservice.dto.CampaignResponseDto;
-import com.prerana.userservice.dto.CreateCampaignDto;
+import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.CampaignEntity;
+import com.prerana.userservice.entity.CampaignUpdateEntity;
 import com.prerana.userservice.entity.GalleryImageEntity;
 import com.prerana.userservice.entity.UserEntity;
 import com.prerana.userservice.enums.CampaignStatus;
@@ -12,10 +11,12 @@ import com.prerana.userservice.enums.OwnerType;
 import com.prerana.userservice.enums.UserType;
 import com.prerana.userservice.mapper.CampaignDtoMappper;
 import com.prerana.userservice.repository.CampaignRepository;
+import com.prerana.userservice.repository.CampaignUpdateRepository;
 import com.prerana.userservice.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -37,11 +39,17 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CampaignService {
 
+    @Autowired
     private final CampaignRepository campaignRepository;
+
+    @Autowired
     private final UserRepository userRepository;
 
     @Autowired
     private CampaignDtoMappper campaignDtoMappper;
+
+    @Autowired
+    private CampaignUpdateRepository updateCampaignRepository;
 
     @Transactional
     public CampaignResponseDto createCampaign(CreateCampaignDto dto, Long ownerId, MultipartFile image) {
@@ -68,12 +76,66 @@ public class CampaignService {
                 .state(dto.getState())
                 .address(dto.getLocation())
                 .imageUrl(imageUrl)
+                .beneficiaryType(dto.getBeneficiaryType())
+                .beneficiaryCount(dto.getBeneficiaryCount())
+                .raisedAmount(dto.getRaisedAmount() != null ? dto.getRaisedAmount() : 0.0)
                 .build();
 
 
         campaignRepository.save(campaign);
 
         return campaignDtoMappper.toDto(campaign);
+    }
+
+    public CampaignResponseDto updateCampaign(Long id, Long ownerId, UpdateCampaignDto dto) {
+
+        CampaignEntity campaign = campaignRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Campaign not found"));
+
+        if (!campaign.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Not authorized");
+        }
+
+        campaign.setTitle(dto.getTitle());
+        campaign.setDescription(dto.getDescription());
+        campaign.setCategory(dto.getCategory());
+        campaign.setTargetAmount(dto.getTargetAmount());
+        campaign.setDeadline(dto.getDeadline());
+        campaign.setUrgency(dto.getUrgency());
+        campaign.setCity(dto.getCity());
+        campaign.setState(dto.getState());
+        campaign.setAddress(dto.getAddress());
+        if(Objects.nonNull(dto.getRaisedAmount())){
+            if(dto.getRaisedAmount() > dto.getTargetAmount()){
+                throw new BadRequestException("Raised amount can not be more than target exception");
+            }
+        }
+        campaign.setRaisedAmount(dto.getRaisedAmount());
+
+        campaignRepository.save(campaign);
+
+        CampaignResponseDto responseDto = campaignDtoMappper.toDto(campaign);
+        responseDto.setOwnerId(campaign.getOwner().getId());
+        responseDto.setOwnerType(campaign.getOwnerType());
+        responseDto.setOwnerName(campaign.getOwner().getFullName());
+        responseDto.setMobileNumber(campaign.getOwner().getMobileNumber());
+        responseDto.setBeneficiaryCount(campaign.getBeneficiaryCount());
+        responseDto.setBeneficiaryType(campaign.getBeneficiaryType());
+
+        return responseDto;
+    }
+
+    public void markAsCompleted(Long id, Long ownerId) {
+
+        CampaignEntity campaign = campaignRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Campaign not found"));
+
+        if (!campaign.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Not authorized");
+        }
+
+        campaign.setStatus(CampaignStatus.COMPLETED);
+        campaignRepository.save(campaign);
     }
 
     private String saveImage(Long ownerId,MultipartFile file)throws IOException {
@@ -132,6 +194,34 @@ public class CampaignService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void addUpdate(Long campaignId, Long ownerId, CreateCampaignUpdateDto dto) {
+
+        CampaignEntity campaign = campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new RuntimeException("Campaign not found"));
+
+        if (!campaign.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        CampaignUpdateEntity update = CampaignUpdateEntity.builder()
+                .campaign(campaign)
+                .message(dto.getMessage())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        updateCampaignRepository.save(update);
+    }
+
+    public List<CampaignUpdateResponseDto> getUpdates(Long campaignId) {
+        return updateCampaignRepository.findByCampaignIdOrderByCreatedAtDesc(campaignId)
+                .stream()
+                .map(u -> new CampaignUpdateResponseDto(u.getMessage(), u.getCreatedAt()))
+                .toList();
+    }
+
+
+
     public CampaignResponseDto getCampaignById(Long id) {
         CampaignEntity c = campaignRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Campaign not found"));
@@ -140,6 +230,9 @@ public class CampaignService {
         responseDto.setOwnerType(c.getOwnerType());
         responseDto.setOwnerName(c.getOwner().getFullName());
         responseDto.setMobileNumber(c.getOwner().getMobileNumber());
+        responseDto.setBeneficiaryCount(c.getBeneficiaryCount());
+        responseDto.setBeneficiaryType(c.getBeneficiaryType());
+
         return responseDto;
     }
 //    CampaignResponseDto.builder()

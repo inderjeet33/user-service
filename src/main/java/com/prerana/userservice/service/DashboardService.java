@@ -4,6 +4,7 @@ import com.prerana.userservice.dto.IndividualDashboardStatsDto;
 import com.prerana.userservice.dto.ModeratorDashboardStatsDto;
 import com.prerana.userservice.dto.NgoDashboardStatsDto;
 import com.prerana.userservice.entity.DonationOfferEntity;
+import com.prerana.userservice.entity.NGOProfileEntity;
 import com.prerana.userservice.enums.ActivationStatus;
 import com.prerana.userservice.enums.AssignmentStatus;
 import com.prerana.userservice.enums.CampaignStatus;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DashboardService {
@@ -87,6 +89,13 @@ public class DashboardService {
                 );
 
         Long campaignsCount = campaignRepository.countByOwner_Id(ngoId);
+        Optional<NGOProfileEntity> ngoProfileEntity = nGOProfileRepository.findByUserId(ngoId);
+        String activationStatus = null;
+        String rejectedReason  = null;
+        if(ngoProfileEntity.isPresent()){
+            activationStatus = ngoProfileEntity.get().getActivationStatus().name();
+            rejectedReason = ngoProfileEntity.get().getRejectionReason();
+        }
         return NgoDashboardStatsDto.builder()
                 .totalRequests(totalRequests)
                 .activeRequests(activeRequests)
@@ -94,6 +103,8 @@ public class DashboardService {
                 .pendingDonations(pendingDonations)
                 .completedDonations(completedDonations)
                 .campaigns(campaignsCount)
+                .activationStatus(activationStatus)
+                .rejectedReason(rejectedReason)
                 .build();
     }
 

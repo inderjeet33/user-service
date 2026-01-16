@@ -31,4 +31,9 @@ public class CampaignResponseDto extends BaseDto {
     private String address;
     private String imageUrl;
     private String mobileNumber;
+
+    private String beneficiaryType;
+    private Integer beneficiaryCount;
+    private Double raisedAmount;
+
 }

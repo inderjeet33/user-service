@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 
 @Entity
@@ -49,5 +50,12 @@ public class NGOProfileEntity extends BaseEntity{
 
     @Enumerated(EnumType.STRING)
     private ActivationStatus activationStatus = ActivationStatus.PENDING;
+
+    @Column(length = 500)
+    private String rejectionReason;
+
+    @Column
+    private LocalDateTime rejectedAt;
+
 
 }

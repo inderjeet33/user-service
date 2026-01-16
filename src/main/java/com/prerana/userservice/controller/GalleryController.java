@@ -39,11 +39,11 @@ public class GalleryController {
 
     @PreAuthorize("hasAuthority('TYPE_NGO')")
     @GetMapping("/ngo/my")
-    public ResponseEntity<List<String>> myImages(HttpServletRequest request) {
+    public ResponseEntity<List<GalleryImageDto>> myImages(HttpServletRequest request) {
 
         Long ngoId = (Long) request.getAttribute("userId");
 
-        List<String> images = galleryService.getImagesByOwnerId(ngoId);
+        List<GalleryImageDto> images = galleryService.getImagesByOwnerId(ngoId);
 
         return ResponseEntity.ok(images);
     }

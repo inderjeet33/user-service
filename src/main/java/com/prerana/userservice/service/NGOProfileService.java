@@ -4,12 +4,15 @@ import com.prerana.userservice.certificate.CertificatePdfGenerator;
 import com.prerana.userservice.dto.AssignedOfferDto;
 import com.prerana.userservice.dto.NgoProfile;
 import com.prerana.userservice.dto.NgoProfileRequestDto;
+import com.prerana.userservice.dto.RejectNgoRequest;
 import com.prerana.userservice.entity.*;
 import com.prerana.userservice.enums.ActivationStatus;
 import com.prerana.userservice.enums.AssignmentStatus;
 import com.prerana.userservice.enums.DonationOfferStatus;
 import com.prerana.userservice.enums.UserType;
 //import com.prerana.userservice.mapper.MapperUtil;
+import com.prerana.userservice.exceptions.MobileNumberOTPNotVerified;
+import com.prerana.userservice.exceptions.RejectionReasonMissingException;
 import com.prerana.userservice.mapper.NgoMapper;
 import com.prerana.userservice.repository.*;
 import io.micrometer.common.util.StringUtils;
@@ -23,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -110,6 +114,8 @@ public class NGOProfileService {
         profile.setBankAccount(req.getBankAccount());
         profile.setIfsc(req.getIfsc());
 //        profile.setAddress(req.getAddress());
+        profile.setRejectedAt(null);
+        profile.setRejectionReason(null);
         profile.setCity(req.getCity());
         profile.setState(req.getState());
         profile.setPincode(req.getPincode());
@@ -142,10 +148,14 @@ public class NGOProfileService {
     }
 
     @Transactional
-    public void rejectNgo(Long ngoId) {
+    public void rejectNgo(Long ngoId, String reason) {
         NGOProfileEntity ngo = ngoRepo.findById(ngoId)
                 .orElseThrow(() -> new RuntimeException("NGO not found"));
-
+        if(StringUtils.isBlank(reason)){
+            throw new RejectionReasonMissingException("Kindly provide a valid reason to reject the ngo profile");
+        }
+        ngo.setRejectionReason(reason);
+        ngo.setRejectedAt(LocalDateTime.now());
         ngo.setActivationStatus(ActivationStatus.REJECTED);
         ngoRepo.save(ngo);
     }

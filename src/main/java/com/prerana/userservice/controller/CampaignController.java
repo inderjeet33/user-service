@@ -1,8 +1,6 @@
 package com.prerana.userservice.controller;
 
-import com.prerana.userservice.dto.CampaignPublicDto;
-import com.prerana.userservice.dto.CampaignResponseDto;
-import com.prerana.userservice.dto.CreateCampaignDto;
+import com.prerana.userservice.dto.*;
 import com.prerana.userservice.service.CampaignService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -50,8 +48,31 @@ public class CampaignController {
         return ResponseEntity.ok(campaignService.getCampaignsByOwner(ownerId));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('TYPE_NGO')")
+    public ResponseEntity<CampaignResponseDto> updateCampaign(
+            @PathVariable Long id,
+            @RequestBody UpdateCampaignDto dto,
+            HttpServletRequest request
+    ) {
+        Long ownerId = (Long) request.getAttribute("userId");
+        return ResponseEntity.ok(campaignService.updateCampaign(id, ownerId, dto));
+    }
+
+    @PatchMapping("/{id}/complete")
+    @PreAuthorize("hasAuthority('TYPE_NGO')")
+    public ResponseEntity<Void> markCampaignCompleted(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long ownerId = (Long) request.getAttribute("userId");
+        campaignService.markAsCompleted(id, ownerId);
+        return ResponseEntity.ok().build();
+    }
+
+
+
     @GetMapping("/{id}")
-//    @PreAuthorize("hasAuthority('TYPE_NGO')")//")
     public ResponseEntity<CampaignResponseDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(campaignService.getCampaignById(id));
     }
@@ -62,5 +83,26 @@ public class CampaignController {
         Long ownerId = (Long) request.getAttribute("userId");
         return ResponseEntity.ok(campaignService.getCampaignsByOwner(ownerId));
     }
+
+    @PostMapping("/{id}/updates")
+    @PreAuthorize("hasAuthority('TYPE_NGO')")
+    public ResponseEntity<Void> addUpdate(
+            @PathVariable Long id,
+            @RequestBody CreateCampaignUpdateDto dto,
+            HttpServletRequest request
+    ) {
+        Long ownerId = (Long) request.getAttribute("userId");
+        campaignService.addUpdate(id, ownerId, dto);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/updates")
+    public ResponseEntity<List<CampaignUpdateResponseDto>> getUpdates(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(campaignService.getUpdates(id));
+    }
+
+
 
 }

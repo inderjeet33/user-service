@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "gallery")
 @Data
-public class GalleryImageEntity {
+public class GalleryImageEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,6 +29,8 @@ public class GalleryImageEntity {
     private GalleryStatus status; // OPTIONAL for now
 
     private LocalDateTime uploadedAt;
+
+    private String rejectionReason;
 
 
 }
