@@ -141,7 +141,7 @@ public class DonationOfferService {
         return NgoPublicDto.builder()
                 .id(ngo.getId())
                 .name(ngo.getNgoName())
-                .email(ngoOwner.getEmail())
+                .email(ngo.getEmail())
                 .mobile(ngoOwner.getMobileNumber())
                 .address(ngo.getCity()+":"+ngo.getState())
                 .city(ngo.getCity())

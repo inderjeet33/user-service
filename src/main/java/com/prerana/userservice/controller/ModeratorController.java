@@ -3,12 +3,10 @@ package com.prerana.userservice.controller;
 import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.ModeratorAssignmentEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.enums.CampaignStatus;
 import com.prerana.userservice.enums.DonationOfferStatus;
 import com.prerana.userservice.enums.GalleryStatus;
-import com.prerana.userservice.service.DonationOfferService;
-import com.prerana.userservice.service.GalleryService;
-import com.prerana.userservice.service.ModeratorAssignmentService;
-import com.prerana.userservice.service.NGOProfileService;
+import com.prerana.userservice.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
@@ -35,6 +33,9 @@ public class ModeratorController {
     @Autowired
     private NGOProfileService ngoProfileService;
 
+
+    @Autowired
+    private CampaignService campaignService;
 
     @Autowired
     private GalleryService galleryService;
@@ -91,6 +92,30 @@ public class ModeratorController {
 
         return galleryService.findByStatusAndNgoId(ngoId, GalleryStatus.PENDING);
 //        return galleryRepo.findByStatus(ImageStatus.PENDING);
+    }
+
+    // 🔍 Fetch campaigns for review
+    @GetMapping("/campaigns")
+    public List<CampaignResponseDto> getCampaignsForReview(
+            @RequestParam CampaignStatus status
+    ) {
+        return campaignService.getCampaignsByStatus(status);
+    }
+
+    @PatchMapping("/campaigns/{id}/approve")
+    public ResponseEntity<?> approveCampaign(@PathVariable Long id) {
+        campaignService.approveCampaign(id);
+        return ResponseEntity.ok().build();
+    }
+
+    // ❌ Reject campaign
+    @PatchMapping("/{id}/reject")
+    public ResponseEntity<?> rejectCampaign(
+            @PathVariable Long id,
+            @RequestBody RejectRequest request
+    ) {
+        campaignService.rejectCampaign(id, request.getReason());
+        return ResponseEntity.ok().build();
     }
 
     // 2. Approve image

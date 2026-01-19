@@ -1,17 +1,15 @@
 package com.prerana.userservice.service;
 
 import com.prerana.userservice.dto.*;
-import com.prerana.userservice.entity.CampaignEntity;
-import com.prerana.userservice.entity.CampaignUpdateEntity;
-import com.prerana.userservice.entity.GalleryImageEntity;
-import com.prerana.userservice.entity.UserEntity;
-import com.prerana.userservice.enums.CampaignStatus;
-import com.prerana.userservice.enums.GalleryStatus;
-import com.prerana.userservice.enums.OwnerType;
-import com.prerana.userservice.enums.UserType;
+import com.prerana.userservice.entity.*;
+import com.prerana.userservice.enums.*;
+import com.prerana.userservice.exceptions.InvalidRaisedAmountException;
+import com.prerana.userservice.exceptions.NgoProfileMissingException;
 import com.prerana.userservice.mapper.CampaignDtoMappper;
 import com.prerana.userservice.repository.CampaignRepository;
 import com.prerana.userservice.repository.CampaignUpdateRepository;
+import com.prerana.userservice.repository.NGOProfileRepository;
+import com.prerana.userservice.entity.UserEntity;
 import com.prerana.userservice.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -51,11 +49,15 @@ public class CampaignService {
     @Autowired
     private CampaignUpdateRepository updateCampaignRepository;
 
+    @Autowired
+    private NGOProfileRepository profileRepository;
+
     @Transactional
     public CampaignResponseDto createCampaign(CreateCampaignDto dto, Long ownerId, MultipartFile image) {
         UserEntity owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new RuntimeException("Owner not found"));
 
+        checkNgoVerified(owner);
         String imageUrl= "";
         try {
              imageUrl = saveImage(ownerId, image);
@@ -87,6 +89,21 @@ public class CampaignService {
         return campaignDtoMappper.toDto(campaign);
     }
 
+    private void checkNgoVerified(UserEntity owner){
+        Boolean verifiedProfileExists = false;
+        if(Objects.nonNull(owner)){
+            Optional<NGOProfileEntity> ngoProfileEntityOptional = profileRepository.findByUser_id(owner.getId());
+            if(ngoProfileEntityOptional.isPresent()){
+                NGOProfileEntity entity = ngoProfileEntityOptional.get();
+                if(ActivationStatus.VERIFIED == entity.getActivationStatus()){
+                    verifiedProfileExists = true;
+                }
+            }
+        }
+        if(!verifiedProfileExists){
+            throw new NgoProfileMissingException("Please create a verified profile for your NGO");
+        }
+    }
     public CampaignResponseDto updateCampaign(Long id, Long ownerId, UpdateCampaignDto dto) {
 
         CampaignEntity campaign = campaignRepository.findById(id)
@@ -107,7 +124,7 @@ public class CampaignService {
         campaign.setAddress(dto.getAddress());
         if(Objects.nonNull(dto.getRaisedAmount())){
             if(dto.getRaisedAmount() > dto.getTargetAmount()){
-                throw new BadRequestException("Raised amount can not be more than target exception");
+                throw new InvalidRaisedAmountException("Raised amount can not be more than target exception");
             }
         }
         campaign.setRaisedAmount(dto.getRaisedAmount());
@@ -179,10 +196,12 @@ public class CampaignService {
                     dto.setImageUrl(c.getImageUrl());
                     dto.setTargetAmount(c.getTargetAmount());
                     dto.setNgoName(c.getOwner().getFullName());
+                    dto.setRaisedAmount(c.getRaisedAmount());
                     return dto;
                 })
                 .toList();
     }
+
 
     public List<CampaignResponseDto> getCampaignsByOwner(Long ownerId) {
         UserEntity owner = userRepository.findById(ownerId)
@@ -194,6 +213,67 @@ public class CampaignService {
                 .collect(Collectors.toList());
     }
 
+    public List<CampaignResponseDto> getCampaignsByStatus(CampaignStatus status) {
+        return campaignRepository.findByStatus(status)
+                .stream()
+                .map(campaignDtoMappper::toDto).map(this::populateOtherDetails)
+                .toList();
+    }
+
+    private CampaignResponseDto populateOtherDetails(CampaignResponseDto responseDto){
+        Optional<CampaignEntity> entity = campaignRepository.findById(responseDto.getId());
+        if(entity.isPresent()){
+            CampaignEntity ent = entity.get();
+            responseDto.setOwnerName(ent.getOwner().getFullName());
+            Optional<NGOProfileEntity> profileEntityOptional = profileRepository.findByUser_id(ent.getOwner().getId());
+            profileEntityOptional.ifPresent(ngoProfileEntity -> responseDto.setOwnerName(ngoProfileEntity.getNgoName()));
+            responseDto.setMobileNumber( ent.getOwner().getMobileNumber());
+        }
+        return responseDto;
+    }
+
+    @Transactional
+    public void approveCampaign(Long id) {
+        CampaignEntity c = campaignRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Campaign not found"));
+
+        c.setStatus(CampaignStatus.ACTIVE);
+        c.setRejectionReason(null);
+
+        campaignRepository.save(c);
+    }
+
+    @Transactional
+    public void rejectCampaign(Long id, String reason) {
+        CampaignEntity c = campaignRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Campaign not found"));
+
+        c.setStatus(CampaignStatus.REJECTED);
+        c.setRejectionReason(reason);
+
+        campaignRepository.save(c);
+    }
+
+
+    @Transactional
+    public void withdrawCampaign(Long campaignId, Long userId) {
+
+        CampaignEntity campaign = campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new RuntimeException("Campaign not found"));
+
+        if (!campaign.getOwner().getId().equals(userId)) {
+            throw new RuntimeException("You are not the owner of this campaign");
+        }
+
+        if (campaign.getStatus() == CampaignStatus.COMPLETED ||
+                campaign.getStatus() == CampaignStatus.WITHDRAWN) {
+
+            throw new RuntimeException("Campaign is already closed");
+        }
+
+        campaign.setStatus(CampaignStatus.WITHDRAWN);
+        campaignRepository.save(campaign);
+    }
     @Transactional
     public void addUpdate(Long campaignId, Long ownerId, CreateCampaignUpdateDto dto) {
 

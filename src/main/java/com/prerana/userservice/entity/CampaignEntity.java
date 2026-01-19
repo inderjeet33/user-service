@@ -56,4 +56,7 @@ public class CampaignEntity extends BaseEntity {
 
     private String beneficiaryType;
     private Integer beneficiaryCount;
+
+    @Column(length = 500)
+    private String rejectionReason;
 }

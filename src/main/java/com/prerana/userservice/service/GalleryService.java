@@ -39,8 +39,8 @@ public class GalleryService {
     public List<GalleryImageDto> getApprovedImagesForNgo(Long userId,Long ngoId) {
         //for now returning all images
         //validate that user is allowed to see this ngos images
-        return galleryRepo.findByNgo_Id(
-                        ngoId
+        return galleryRepo.findByNgo_IdAndStatus(
+                        ngoId,GalleryStatus.APPROVED
                 ).stream()
                 .map(this::toDto)
                 .toList();

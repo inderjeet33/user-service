@@ -11,4 +11,5 @@ public class CampaignPublicDto {
     private Double targetAmount;
     private Double collectedAmount;
     private String ngoName;
+    private Double raisedAmount;
 }

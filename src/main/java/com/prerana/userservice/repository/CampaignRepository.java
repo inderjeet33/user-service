@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CampaignRepository extends JpaRepository<CampaignEntity,Long> {
@@ -19,4 +20,7 @@ public interface CampaignRepository extends JpaRepository<CampaignEntity,Long> {
     List<CampaignEntity> findByStatus(CampaignStatus status);
 
     Long countByStatus(CampaignStatus status);
+
+    Optional<CampaignEntity> findByOwner_id(Long id);
+
 }

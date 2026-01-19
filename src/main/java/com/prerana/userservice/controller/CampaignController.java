@@ -48,6 +48,24 @@ public class CampaignController {
         return ResponseEntity.ok(campaignService.getCampaignsByOwner(ownerId));
     }
 
+    @PatchMapping("/{id}/withdraw")
+    @PreAuthorize("hasAuthority('TYPE_NGO')")
+    public ResponseEntity<?> withdrawCampaign(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = (Long) request.getAttribute("userId");
+
+
+        try {
+            campaignService.withdrawCampaign(id, userId);
+        }catch(Exception e){
+            System.out.println("exception "+e);
+        }
+
+        return ResponseEntity.ok("Campaign withdrawn successfully");
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('TYPE_NGO')")
     public ResponseEntity<CampaignResponseDto> updateCampaign(
