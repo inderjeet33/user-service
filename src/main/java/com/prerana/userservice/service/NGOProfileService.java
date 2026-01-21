@@ -80,7 +80,7 @@ public class NGOProfileService {
                     dto.setAssignmentId(a.getId());
                     dto.setDonationOfferId(offer.getId());
                     dto.setReason(offer.getReason());
-                    dto.setDonationCategory(offer.getDonationCategory());
+                    dto.setDonationCategory(offer.getDonationCategory().name());
                     dto.setLocation(offer.getLocation());
                     dto.setDonorName(offer.getUser().getFullName());
                     dto.setDonorPhone(offer.getUser().getMobileNumber());

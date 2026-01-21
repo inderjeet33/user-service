@@ -8,9 +8,7 @@ import com.prerana.userservice.entity.DonationOfferEntity;
 import com.prerana.userservice.entity.ModeratorAssignmentEntity;
 import com.prerana.userservice.entity.NGOProfileEntity;
 import com.prerana.userservice.entity.UserEntity;
-import com.prerana.userservice.enums.AssignmentStatus;
-import com.prerana.userservice.enums.DonationOfferStatus;
-import com.prerana.userservice.enums.UserType;
+import com.prerana.userservice.enums.*;
 import com.prerana.userservice.mapper.DonationOfferDtoMapper;
 import com.prerana.userservice.mapper.UserEntityMapper;
 import com.prerana.userservice.repository.DonationOfferRepository;
@@ -77,6 +75,9 @@ public class DonationOfferService {
                 .location(dto.getLocation())
                 .status(DonationOfferStatus.OPEN)
                 .preferredContact(dto.getPreferredContact())
+                .helpType(dto.getHelpType())
+                .itemDetails(dto.getItemDetails())
+                .quantity(dto.getQuantity())
                 .build();
 
         return mapperUtil.toDto(donationOfferRepository.save(offer));
@@ -177,8 +178,8 @@ public class DonationOfferService {
         Page<DonationOfferEntity> pageEntities =
                 donationOfferRepository.search(
                         normalize(search),
-                        normalize(category),
-                        normalize(type),
+                        StringUtils.isBlank(category) ? null : DonationCategory.valueOf(normalize(category)),
+                        StringUtils.isBlank(type) ? null : HelpType.valueOf(normalize(type)),
                         status,
                         pageable
                 );

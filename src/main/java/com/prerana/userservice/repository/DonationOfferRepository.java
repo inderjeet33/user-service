@@ -4,7 +4,9 @@ import com.prerana.userservice.entity.DonationOfferEntity;
 import com.prerana.userservice.entity.ModeratorAssignmentEntity;
 import com.prerana.userservice.entity.NGOProfileEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.enums.DonationCategory;
 import com.prerana.userservice.enums.DonationOfferStatus;
+import com.prerana.userservice.enums.HelpType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -42,13 +44,13 @@ public interface DonationOfferRepository extends JpaRepository<DonationOfferEnti
              OR d.reason ILIKE CONCAT('%', CAST(:search as text) , '%')
           )
         AND (:category IS NULL OR d.donationCategory ILIKE :category)
-        AND (:type IS NULL OR d.type = :type)
+        AND (:type IS NULL OR d.helpType = :type)
         AND (:status IS NULL OR d.status = :status)
     """)
     Page<DonationOfferEntity> search(
             @Param("search") String search,
-            @Param("category") String category,
-            @Param("type") String type,
+            @Param("category") DonationCategory category,
+            @Param("type") HelpType type,
             @Param("status") DonationOfferStatus status,
             Pageable pageable
     );

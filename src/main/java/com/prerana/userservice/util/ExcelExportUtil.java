@@ -124,7 +124,7 @@ public class ExcelExportUtil {
                 row.createCell(1).setCellValue(
                         offer.getAmount() != null ? offer.getAmount() : 0
                 );
-                row.createCell(2).setCellValue(offer.getDonationCategory());
+                row.createCell(2).setCellValue(offer.getDonationCategory().name());
                 row.createCell(3).setCellValue(offer.getType());
                 row.createCell(4).setCellValue(offer.getCreatedAt().toString());
                 row.createCell(5).setCellValue(offer.getTimeLine());
@@ -208,7 +208,7 @@ public class ExcelExportUtil {
                 row.createCell(3).setCellValue(offer.getUser().getEmail());
                 row.createCell(4).setCellValue(offer.getUser().getMobileNumber());
                 row.createCell(5).setCellValue(offer.getAmount());
-                row.createCell(6).setCellValue(offer.getDonationCategory());
+                row.createCell(6).setCellValue(offer.getDonationCategory().name());
                 row.createCell(7).setCellValue(offer.getType());
                 row.createCell(8).setCellValue(offer.getStatus().name());
                 row.createCell(9).setCellValue(a.getCreatedAt().toString());
@@ -349,7 +349,7 @@ public class ExcelExportUtil {
                 row.createCell(2).setCellValue(
                         offer.getAmount() != null ? offer.getAmount() : 0
                 );
-                row.createCell(3).setCellValue(offer.getDonationCategory());
+                row.createCell(3).setCellValue(offer.getDonationCategory().name());
                 row.createCell(4).setCellValue(offer.getStatus().name());
 
                 row.createCell(5).setCellValue(
@@ -432,7 +432,7 @@ public class ExcelExportUtil {
                                 : 0
                 );
                 row.createCell(4).setCellValue(
-                        offer != null ? offer.getDonationCategory() : ""
+                        offer != null ? offer.getDonationCategory().name() : ""
                 );
                 row.createCell(5).setCellValue(
                         offer != null ? offer.getStatus().name() : ""

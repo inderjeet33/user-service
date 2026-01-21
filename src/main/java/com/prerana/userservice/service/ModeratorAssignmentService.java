@@ -60,6 +60,89 @@ public class ModeratorAssignmentService {
                 .toList();
     }
 
+//    @Transactional
+//    public ModeratorAssignmentEntity assignNgos(Long moderatorId, ModeratorAssignmentRequestDTO req) {
+//
+//        DonationOfferEntity dr = donationRepo.findById(req.getDonationRequestId())
+//                .orElseThrow(() -> new RuntimeException("Donation request not found"));
+//
+//        UserEntity receiver = userRepo.findById(req.getReceiverId())
+//                .orElseThrow(() -> new RuntimeException("NGO not found"));
+//
+//        UserEntity moderator = userRepo.findById(moderatorId)
+//                .orElseThrow(() -> new RuntimeException("Moderator not found"));
+//
+//        UserEntity donor = dr.getUser(); // donation_request already has donor
+//        if (receiver.getUserType() != UserType.NGO &&
+//                receiver.getUserType() != UserType.INDIVIDUAL) {
+//
+//            throw new RuntimeException("Receiver must be NGO or Individual Receiver.");
+//        }
+//
+//        if(dr.getStatus() == DonationOfferStatus.OPEN) {
+//
+//            if (repository.existsByDonationRequest_IdAndStatusIn(req.getDonationRequestId(), List.of(AssignmentStatus.ASSIGNED, AssignmentStatus.IN_PROGRESS))) {
+//                throw new RuntimeException("Donation offer already assigned.");
+//            }
+//
+//
+////        if (moderator.getUserType() != UserType.MODERATOR) {
+////            throw new RuntimeException("Only moderators can create assignments.");
+////        }
+////        if (donor.getId().equals(receiver.getId())) {
+////            throw new RuntimeException("Donor cannot be their own receiver.");
+////        }
+////
+//            ModeratorAssignmentEntity assignment = ModeratorAssignmentEntity.builder()
+//                    .moderator(moderator)
+//                    .donationRequest(dr)
+//                    .receiver(receiver)
+//                    .receiver_type(receiver.getUserType())
+//                    .donor(donor)
+//                    .status(AssignmentStatus.ASSIGNED)
+//                    .build();
+//
+//            dr.setStatus(DonationOfferStatus.ASSIGNED);
+//            donationRepo.save(dr);
+//            return repository.save(assignment);
+//        }else if(dr.getStatus() == DonationOfferStatus.ASSIGNED){
+//            ModeratorAssignmentEntity currentAssignment =
+//                    repository.findFirstByDonationRequest_IdAndStatus(
+//                            dr.getId(),
+//                            AssignmentStatus.ASSIGNED
+//                    ).orElseThrow(() -> new RuntimeException("No active assignment found"));
+//            currentAssignment.setStatus(AssignmentStatus.REASSIGNED);
+//            repository.save(currentAssignment);
+//
+//            // create new assignment
+//            ModeratorAssignmentEntity newAssignment =
+//                    ModeratorAssignmentEntity.builder()
+//                            .moderator(moderator)
+//                            .donationRequest(dr)
+//                            .receiver(receiver)
+//                            .receiver_type(receiver.getUserType())
+//                            .donor(donor)
+//                            .status(AssignmentStatus.ASSIGNED)
+//                            .build();
+//
+//            return repository.save(newAssignment);
+//        }else{
+//            // in case of any other state, we can not assign it to someone else
+//            throw new RuntimeException("Cannot assign donation offer in status : "+dr.getStatus().name());
+//        }
+//    }
+
+    public Optional<ModeratorAssignmentEntity> getById(Long id) {
+        return repository.findById(id);
+    }
+
+//    public ModeratorAssignmentEntity updateStatus(Long id, AssignmentStatus status) {
+//        ModeratorAssignmentEntity ma = repository.findById(id)
+//                .orElseThrow(() -> new RuntimeException("Assignment not found"));
+//        ma.setStatus(status);
+//        return repository.save(ma);
+//    }
+
     @Transactional
     public ModeratorAssignmentEntity assignNgo(Long moderatorId, ModeratorAssignmentRequestDTO req) {
 
@@ -72,27 +155,33 @@ public class ModeratorAssignmentService {
         UserEntity moderator = userRepo.findById(moderatorId)
                 .orElseThrow(() -> new RuntimeException("Moderator not found"));
 
-        UserEntity donor = dr.getUser(); // donation_request already has donor
-        if (receiver.getUserType() != UserType.NGO &&
-                receiver.getUserType() != UserType.INDIVIDUAL) {
+        UserEntity donor = dr.getUser();
 
+        if (receiver.getUserType() != UserType.NGO && receiver.getUserType() != UserType.INDIVIDUAL) {
             throw new RuntimeException("Receiver must be NGO or Individual Receiver.");
         }
 
-        if(dr.getStatus() == DonationOfferStatus.OPEN) {
+        // ❌ Block invalid offer states
+        if (dr.getStatus() == DonationOfferStatus.IN_PROGRESS ||
+                dr.getStatus() == DonationOfferStatus.COMPLETED ||
+                dr.getStatus() == DonationOfferStatus.CANCELLED) {
 
-            if (repository.existsByDonationRequest_IdAndStatusIn(req.getDonationRequestId(), List.of(AssignmentStatus.ASSIGNED, AssignmentStatus.IN_PROGRESS))) {
+            throw new RuntimeException("Cannot assign donation offer in status: " + dr.getStatus());
+        }
+
+        // Check if there is an active assignment
+        Optional<ModeratorAssignmentEntity> activeAssignmentOpt =
+                repository.findFirstByDonationRequest_IdAndStatusIn(
+                        dr.getId(),
+                        List.of(AssignmentStatus.ASSIGNED, AssignmentStatus.IN_PROGRESS)
+                );
+
+        if (dr.getStatus() == DonationOfferStatus.OPEN) {
+
+            if (activeAssignmentOpt.isPresent()) {
                 throw new RuntimeException("Donation offer already assigned.");
             }
 
-
-//        if (moderator.getUserType() != UserType.MODERATOR) {
-//            throw new RuntimeException("Only moderators can create assignments.");
-//        }
-//        if (donor.getId().equals(receiver.getId())) {
-//            throw new RuntimeException("Donor cannot be their own receiver.");
-//        }
-//
             ModeratorAssignmentEntity assignment = ModeratorAssignmentEntity.builder()
                     .moderator(moderator)
                     .donationRequest(dr)
@@ -104,44 +193,43 @@ public class ModeratorAssignmentService {
 
             dr.setStatus(DonationOfferStatus.ASSIGNED);
             donationRepo.save(dr);
+
             return repository.save(assignment);
-        }else if(dr.getStatus() == DonationOfferStatus.ASSIGNED){
+        }
+
+        if (dr.getStatus() == DonationOfferStatus.ASSIGNED) {
+
             ModeratorAssignmentEntity currentAssignment =
                     repository.findFirstByDonationRequest_IdAndStatus(
                             dr.getId(),
                             AssignmentStatus.ASSIGNED
                     ).orElseThrow(() -> new RuntimeException("No active assignment found"));
+
+            // Only allow reassignment if NGO rejected or expired
+            if (currentAssignment.getStatus() != AssignmentStatus.REJECTED_BY_RECEIVER &&
+                    currentAssignment.getStatus() != AssignmentStatus.EXPIRED) {
+
+                throw new RuntimeException("Cannot reassign. NGO has not rejected or expired yet.");
+            }
+
             currentAssignment.setStatus(AssignmentStatus.REASSIGNED);
             repository.save(currentAssignment);
 
-            // create new assignment
-            ModeratorAssignmentEntity newAssignment =
-                    ModeratorAssignmentEntity.builder()
-                            .moderator(moderator)
-                            .donationRequest(dr)
-                            .receiver(receiver)
-                            .receiver_type(receiver.getUserType())
-                            .donor(donor)
-                            .status(AssignmentStatus.ASSIGNED)
-                            .build();
+            ModeratorAssignmentEntity newAssignment = ModeratorAssignmentEntity.builder()
+                    .moderator(moderator)
+                    .donationRequest(dr)
+                    .receiver(receiver)
+                    .receiver_type(receiver.getUserType())
+                    .donor(donor)
+                    .status(AssignmentStatus.ASSIGNED)
+                    .build();
 
             return repository.save(newAssignment);
-        }else{
-            // in case of any other state, we can not assign it to someone else
-            throw new RuntimeException("Cannot assign donation offer in status : "+dr.getStatus().name());
         }
+
+        throw new RuntimeException("Invalid donation offer state.");
     }
 
-    public Optional<ModeratorAssignmentEntity> getById(Long id) {
-        return repository.findById(id);
-    }
-
-//    public ModeratorAssignmentEntity updateStatus(Long id, AssignmentStatus status) {
-//        ModeratorAssignmentEntity ma = repository.findById(id)
-//                .orElseThrow(() -> new RuntimeException("Assignment not found"));
-//        ma.setStatus(status);
-//        return repository.save(ma);
-//    }
 
     @Transactional
     public ModeratorAssignmentEntity updateStatus(Long assignmentId, AssignmentStatus newStatus) {

@@ -62,4 +62,6 @@ public interface ModeratorAssignmentRepository extends JpaRepository<ModeratorAs
 
         List<ModeratorAssignmentEntity> findAllByOrderByCreatedAtDesc();
 
+    Optional<ModeratorAssignmentEntity> findFirstByDonationRequest_IdAndStatusIn(Long id,List<AssignmentStatus> assignmentStatus);
+
 }

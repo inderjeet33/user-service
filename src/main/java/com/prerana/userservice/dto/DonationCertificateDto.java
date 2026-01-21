@@ -1,5 +1,6 @@
 package com.prerana.userservice.dto;
 
+import com.prerana.userservice.enums.DonationCategory;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +18,7 @@ public class DonationCertificateDto {
     private String ngoName;
     private String ngoRegistrationNumber;
 
-    private String donationCategory;
+    private DonationCategory donationCategory;
     private Long amount;
     private String location;
 
