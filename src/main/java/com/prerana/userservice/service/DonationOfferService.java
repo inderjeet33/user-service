@@ -214,14 +214,59 @@ public class DonationOfferService {
         return offer;
     }
 
+//    private void populateReceiverDetailsInDto(Page<DonationOffersRequestDto> dtos) {
+//
+//        for (DonationOffersRequestDto dto : dtos) {
+//
+//            Optional<ModeratorAssignmentEntity> optionalAssignment =
+//                    repository.findTopByDonationRequest_IdOrderByCreatedAtDesc(dto.getId());
+//
+//            if (optionalAssignment.isEmpty()) continue;
+//
+//            ModeratorAssignmentEntity entity = optionalAssignment.get();
+//
+//            dto.setAssignmentStatus(entity.getStatus());
+//            dto.setReceiverType(entity.getReceiver().getUserType().name());
+//            dto.setReceiverId(entity.getReceiver().getId());
+//            dto.setReceiverMobile(entity.getReceiver().getMobileNumber());
+//            dto.setReceiverEmail(entity.getReceiver().getEmail());
+//
+//            if (entity.getReceiver().getUserType() == UserType.NGO) {
+//                NgoProfile ngoProfile = ngoProfileService
+//                        .getProfileByUserId(dto.getReceiverId())
+//                        .orElseThrow(() ->
+//                                new RuntimeException("NGO profile missing for userId " + dto.getReceiverId())
+//                        );
+//
+//                dto.setReceiverName(ngoProfile.getNgoName());
+//                dto.setReceiverCity(ngoProfile.getCity());
+//            } else {
+//                dto.setReceiverName(entity.getReceiver().getFullName());
+//            }
+//        }
+//    }
+
     private void populateReceiverDetailsInDto(Page<DonationOffersRequestDto> dtos) {
 
         for (DonationOffersRequestDto dto : dtos) {
 
             Optional<ModeratorAssignmentEntity> optionalAssignment =
-                    repository.findTopByDonationRequest_IdOrderByCreatedAtDesc(dto.getId());
+                    repository.findTopByDonationRequest_IdAndStatusInOrderByCreatedAtDesc(
+                            dto.getId(),
+                            List.of(
+                                    AssignmentStatus.ASSIGNED,
+                                    AssignmentStatus.IN_PROGRESS,
+                                    AssignmentStatus.COMPLETED
+                            )
+                    );
 
-            if (optionalAssignment.isEmpty()) continue;
+            if (optionalAssignment.isEmpty()) {
+                dto.setReceiverName(null);
+                dto.setReceiverId(null);
+                dto.setReceiverEmail(null);
+                dto.setReceiverMobile(null);
+                continue;
+            }
 
             ModeratorAssignmentEntity entity = optionalAssignment.get();
 
@@ -245,6 +290,7 @@ public class DonationOfferService {
             }
         }
     }
+
 
 //    private void populateReceiverDetailsInDto(Page<DonationOffersRequestDto> dtos){
 //        for(DonationOffersRequestDto dto : dtos){

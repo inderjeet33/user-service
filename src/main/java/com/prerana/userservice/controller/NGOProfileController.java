@@ -21,6 +21,7 @@ import java.util.Map;
 public class NGOProfileController {
 
     @Autowired private NGOProfileService profileService;
+
     @Autowired
     private JwtService jwtUtil; // for extracting user id from token or use @AuthenticationPrincipal
 
@@ -57,6 +58,15 @@ public class NGOProfileController {
         return ResponseEntity.ok(profileService.getAssignedOffers(ngoUserId));
     }
 
+    @GetMapping("/assigned-volunteers")
+    public ResponseEntity<List<AssignedVolunteerDto>> getAssignedVolunteers(
+            HttpServletRequest request) {
+
+        Long ngoUserId = (Long) request.getAttribute("userId");
+        return ResponseEntity.ok(
+                profileService.getAssignedVolunteers(ngoUserId)
+        );
+    }
     @PostMapping("/assigned-offers/{assignmentId}/update-status")
     public ResponseEntity<?> updateAssignedOfferStatus(
             @PathVariable Long assignmentId,
@@ -64,9 +74,19 @@ public class NGOProfileController {
             HttpServletRequest request
     ) {
         Long ngoId = (Long)request.getAttribute("userId");
-//        Long ngoId = 2L;
-//        Long ngoId = jwtUtil.getUserIdFromRequest(request);
         return ResponseEntity.ok(profileService.updateAssignedOfferStatus(ngoId, assignmentId, newStatus));
+    }
+
+    @PostMapping("/assigned-volunteers/{assignmentId}/update-status")
+    public ResponseEntity<?> updateAssignedVolunteerStatus(
+            @PathVariable Long assignmentId,
+            @RequestParam AssignmentStatus newStatus,
+            HttpServletRequest request
+    ) {
+        Long ngoId = (Long) request.getAttribute("userId");
+        return ResponseEntity.ok(
+                profileService.updateAssignedVolunteerStatus(ngoId, assignmentId, newStatus)
+        );
     }
 
 

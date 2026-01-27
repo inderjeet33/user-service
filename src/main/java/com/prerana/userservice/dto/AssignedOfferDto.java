@@ -1,6 +1,7 @@
 package com.prerana.userservice.dto;
 
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.enums.DonationCategory;
 import com.prerana.userservice.enums.DonationOfferStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,4 +27,7 @@ public class AssignedOfferDto {
     private LocalDateTime assignedAt;
     private LocalDateTime offerCreatedAt;
     private String location;
+    private String helpType;
+    private Integer quantity;
+    private String itemDetails;
 }

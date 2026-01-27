@@ -1,15 +1,9 @@
 package com.prerana.userservice.service;
 
 import com.prerana.userservice.certificate.CertificatePdfGenerator;
-import com.prerana.userservice.dto.AssignedOfferDto;
-import com.prerana.userservice.dto.NgoProfile;
-import com.prerana.userservice.dto.NgoProfileRequestDto;
-import com.prerana.userservice.dto.RejectNgoRequest;
+import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.*;
-import com.prerana.userservice.enums.ActivationStatus;
-import com.prerana.userservice.enums.AssignmentStatus;
-import com.prerana.userservice.enums.DonationOfferStatus;
-import com.prerana.userservice.enums.UserType;
+import com.prerana.userservice.enums.*;
 //import com.prerana.userservice.mapper.MapperUtil;
 import com.prerana.userservice.exceptions.MobileNumberOTPNotVerified;
 import com.prerana.userservice.exceptions.RejectionReasonMissingException;
@@ -22,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 
@@ -46,6 +42,9 @@ public class NGOProfileService {
 
     @Autowired
     private  ModeratorAssignmentRepository assignmentRepository;
+
+    @Autowired
+    private VolunteerAssignmentRepository volunteerAssignmentRepository;
 
     @Autowired
     private CertificateRepository certificateRepo;
@@ -88,11 +87,89 @@ public class NGOProfileService {
                     dto.setAssignedAt(a.getCreatedAt());
                     dto.setOfferCreatedAt(offer.getCreatedAt());
                     dto.setTimeLine(offer.getTimeLine());
+                    dto.setItemDetails(offer.getItemDetails());
+                    dto.setQuantity(offer.getQuantity());
+                    dto.setHelpType(offer.getHelpType().name());
 
                     return dto;
                 })
                 .collect(Collectors.toList());
     }
+
+//    public List<VolunteerOffersRequestDto> getAssignedVolunteers(Long ngoUserId) {
+//
+//        List<VolunteerAssignmentEntity> assignments =
+//                volunteerAssignmentRepository.findAllAssignmentsForNgo(ngoUserId);
+//
+//        return assignments.stream()
+//                .map(a -> {
+//                    VolunteerRequestEntity vr = a.getVolunteerRequest();
+//                    UserEntity volunteer = a.getVolunteer();
+//
+//                    VolunteerOffersRequestDto dto = new VolunteerOffersRequestDto();
+//
+//                    dto.setAssignmentStatus(a.getStatus());
+//                    dto.setId(vr.getId());
+//
+//                    // Volunteer request info
+//                    dto.setVolunteerType(vr.getVolunteerType().name());
+//                    dto.setAvailability(vr.getAvailability());
+//                    dto.setSkills(vr.getSkills());
+//                    dto.setLocation(vr.getLocation());
+//                    dto.setPreferredContact(vr.getPreferredContact());
+//                    dto.setReason(vr.getReason());
+//                    dto.setStatus(vr.getStatus());
+//
+//                    // Volunteer (individual)
+//                    dto.setUserId(volunteer.getId());
+//                    dto.setUserName(volunteer.getFullName());
+//                    dto.setUserEmail(volunteer.getEmail());
+//                    dto.setUserMobile(volunteer.getMobileNumber());
+//
+//                    return dto;
+//                })
+//                .collect(Collectors.toList());
+//    }
+
+    public List<AssignedVolunteerDto> getAssignedVolunteers(Long ngoUserId) {
+
+        List<VolunteerAssignmentEntity> assignments =
+                volunteerAssignmentRepository.findAllAssignmentsForNgo(ngoUserId);
+
+        return assignments.stream()
+                .map(a -> {
+                    VolunteerRequestEntity vr = a.getVolunteerRequest();
+                    UserEntity volunteer = a.getVolunteer();
+
+                    AssignedVolunteerDto dto = new AssignedVolunteerDto();
+
+                    // Assignment info
+                    dto.setAssignmentId(a.getId());
+                    dto.setAssignmentStatus(a.getStatus());
+                    dto.setAssignedAt(a.getCreatedAt());
+
+                    // Volunteer request info
+                    dto.setVolunteerRequestId(vr.getId());
+                    dto.setVolunteerType(vr.getVolunteerType().name());
+                    dto.setAvailability(vr.getAvailability());
+                    dto.setSkills(vr.getSkills());
+                    dto.setLocation(vr.getLocation());
+                    dto.setPreferredContact(vr.getPreferredContact());
+                    dto.setReason(vr.getReason());
+                    dto.setStatus(vr.getStatus());
+                    dto.setRequestCreatedAt(vr.getCreatedAt());
+
+                    // Volunteer (individual user)
+                    dto.setUserId(volunteer.getId());
+                    dto.setUserName(volunteer.getFullName());
+                    dto.setUserEmail(volunteer.getEmail());
+                    dto.setUserMobile(volunteer.getMobileNumber());
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
 
     @Transactional
     public NGOProfileEntity completeProfile(Long userId, NgoProfileRequestDto req) {
@@ -185,6 +262,7 @@ public class NGOProfileService {
         offer.setStatus(mapToDonationOfferStatus(newStatus));
 
         donationOfferRepository.save(offer);
+
         assignmentRepository.save(assignment);
         if(AssignmentStatus.COMPLETED == newStatus){
             completeAssignment(offer.getAmount(),assignment);
@@ -283,4 +361,73 @@ public class NGOProfileService {
             return ngoRepo.findByCityAndCategoriesContaining(city, category);
         }
     }
+
+    private void validateNgoVolunteerStatusChange(
+            AssignmentStatus oldStatus,
+            AssignmentStatus newStatus
+    ) {
+
+        if (newStatus == AssignmentStatus.IN_PROGRESS &&
+                oldStatus == AssignmentStatus.ASSIGNED) return;
+
+        if (newStatus == AssignmentStatus.COMPLETED &&
+                oldStatus == AssignmentStatus.IN_PROGRESS) return;
+
+        if (newStatus == AssignmentStatus.REJECTED_BY_RECEIVER &&
+                (oldStatus == AssignmentStatus.ASSIGNED || oldStatus == AssignmentStatus.IN_PROGRESS)) return;
+
+        throw new RuntimeException("Invalid volunteer status transition");
+    }
+
+    @Transactional
+    public String updateAssignedVolunteerStatus(
+            Long ngoId,
+            Long assignmentId,
+            AssignmentStatus newStatus
+    ) {
+
+        VolunteerAssignmentEntity assignment =
+                volunteerAssignmentRepository.findById(assignmentId)
+                        .orElseThrow(() -> new RuntimeException("Volunteer assignment not found"));
+
+        // 🔐 Security check
+        if (!assignment.getReceiver().getId().equals(ngoId)) {
+            throw new RuntimeException("Not allowed");
+        }
+
+        if (!assignment.isActive()) {
+            throw new RuntimeException("Cannot update historical assignment");
+        }
+
+        // Validate transition
+        validateNgoVolunteerStatusChange(assignment.getStatus(), newStatus);
+
+        // Update assignment
+        assignment.setStatus(newStatus);
+        volunteerAssignmentRepository.save(assignment);
+
+        // Update volunteer request status
+        VolunteerRequestEntity request = assignment.getVolunteerRequest();
+        request.setStatus(mapToVolunteerOfferStatus(newStatus));
+
+        return "Volunteer status updated successfully";
+    }
+
+    private VolunteerOfferStatus mapToVolunteerOfferStatus(AssignmentStatus status) {
+
+        switch (status) {
+            case IN_PROGRESS:
+                return VolunteerOfferStatus.IN_PROGRESS;
+
+            case COMPLETED:
+                return VolunteerOfferStatus.COMPLETED;
+
+            case REJECTED_BY_RECEIVER:
+                return VolunteerOfferStatus.OPEN;
+
+            default:
+                return VolunteerOfferStatus.ASSIGNED;
+        }
+    }
+
 }

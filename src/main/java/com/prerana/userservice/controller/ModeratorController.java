@@ -2,6 +2,7 @@ package com.prerana.userservice.controller;
 
 import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.ModeratorAssignmentEntity;
+import com.prerana.userservice.entity.VolunteerAssignmentEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
 import com.prerana.userservice.enums.CampaignStatus;
 import com.prerana.userservice.enums.DonationOfferStatus;
@@ -35,6 +36,9 @@ public class ModeratorController {
 
 
     @Autowired
+    private VolunteerService volunteerService;
+
+    @Autowired
     private CampaignService campaignService;
 
     @Autowired
@@ -45,10 +49,37 @@ public class ModeratorController {
 
     @PostMapping("/assign")
     public ResponseEntity<?> assignNgo(@RequestBody ModeratorAssignmentRequestDTO req, HttpServletRequest request) {
+        //change it too
         Long moderatorId = (Long) request.getAttribute("userId");
         ModeratorAssignmentEntity assignment = assignmentService.assignNgo(moderatorId, req);
         return ResponseEntity.ok(assignment);
     }
+
+    @PostMapping("/assign/volunteers")
+    public ResponseEntity<?> assignNgo(@RequestBody VolunteerAssignmentRequestDTO req, HttpServletRequest request) {
+        //change it too
+        Long moderatorId = (Long) request.getAttribute("userId");
+        VolunteerAssignmentEntity assignment = volunteerService.assignNgoForVolunteer(moderatorId, req);
+        return ResponseEntity.ok(assignment);
+    }
+
+
+    @GetMapping("/volunteer/offers")
+    public ResponseEntity<Page<VolunteerOffersRequestDto>> getAllRequests(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status
+    ) {
+
+        Page<VolunteerOffersRequestDto> result =
+                volunteerService.search(page, size, search, type, status);
+
+        return ResponseEntity.ok(result);
+    }
+
+
 
     @PostMapping("/assignment/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestParam AssignmentStatus status) {

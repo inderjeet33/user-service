@@ -1,0 +1,42 @@
+package com.prerana.userservice.controller;
+
+import com.prerana.userservice.dto.HelpRequestCreateDto;
+import com.prerana.userservice.dto.HelpRequestHistoryDto;
+import com.prerana.userservice.dto.HelpRequestResponseDto;
+import com.prerana.userservice.service.HelpRequestService;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/help-requests")
+@RequiredArgsConstructor
+@PreAuthorize("hasAuthority('TYPE_INDIVIDUAL')")
+public class HelpRequestController {
+
+    private final HelpRequestService helpRequestService;
+
+    @PostMapping("/create")
+    public ResponseEntity<HelpRequestResponseDto> createHelpRequest(
+            @RequestBody HelpRequestCreateDto dto,
+            HttpServletRequest request
+    ) {
+        Long userId = (Long) request.getAttribute("userId");
+        return ResponseEntity.ok(
+                helpRequestService.createHelpRequest(userId, dto)
+        );
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<List<HelpRequestHistoryDto>> myHelpRequests(
+            HttpServletRequest request
+    ) {
+        Long userId = (Long) request.getAttribute("userId");
+        return ResponseEntity.ok(helpRequestService.getMyHelpRequests(userId));
+    }
+
+}
