@@ -3,6 +3,7 @@ package com.prerana.userservice.controller;
 import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.NGOProfileEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.service.HelpRequestService;
 import com.prerana.userservice.service.JwtService;
 import com.prerana.userservice.service.NGOProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,9 @@ import java.util.Map;
 public class NGOProfileController {
 
     @Autowired private NGOProfileService profileService;
+
+    @Autowired
+    private HelpRequestService helpRequestService;
 
     @Autowired
     private JwtService jwtUtil; // for extracting user id from token or use @AuthenticationPrincipal
@@ -77,6 +81,17 @@ public class NGOProfileController {
         return ResponseEntity.ok(profileService.updateAssignedOfferStatus(ngoId, assignmentId, newStatus));
     }
 
+    @GetMapping("/assigned-help-requests")
+    @PreAuthorize("hasAuthority('TYPE_NGO')")
+    public ResponseEntity<List<AssignedHelpRequestDto>> ngoAssignedHelpRequests(
+            HttpServletRequest request
+    ) {
+        Long ngoId = (Long) request.getAttribute("userId");
+        return ResponseEntity.ok(
+                helpRequestService.getAssignedHelpRequestsForHelper(ngoId)
+        );
+    }
+
     @PostMapping("/assigned-volunteers/{assignmentId}/update-status")
     public ResponseEntity<?> updateAssignedVolunteerStatus(
             @PathVariable Long assignmentId,
@@ -88,6 +103,20 @@ public class NGOProfileController {
                 profileService.updateAssignedVolunteerStatus(ngoId, assignmentId, newStatus)
         );
     }
+
+    @PostMapping("/assigned-help-requests/{assignmentId}/update-status")
+    public ResponseEntity<?> updateAssignedHelpRequestStatus(
+            @PathVariable Long assignmentId,
+            @RequestParam AssignmentStatus newStatus,
+            HttpServletRequest request
+    ) {
+        Long helperId = (Long) request.getAttribute("userId");
+        helpRequestService.updateHelpAssignmentStatus(helperId, assignmentId, newStatus);
+        return ResponseEntity.ok("Status updated");
+    }
+
+
+
 
 
 }

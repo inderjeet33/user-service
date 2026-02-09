@@ -5,7 +5,7 @@ import java.util.Map;
 
 public enum UserType {
     INDIVIDUAL("INDIVIDUAL"),
-    CSR_COMPANIES("CORPORATE"),
+    CSR("CSR"),
     NGO("NGO"),
     MODERATOR("MODERATOR");
 

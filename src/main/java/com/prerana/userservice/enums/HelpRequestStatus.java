@@ -5,5 +5,7 @@ public enum HelpRequestStatus {
     ASSIGNED,    // Someone is assigned
     IN_PROGRESS,
     COMPLETED,
-    CANCELLED
+    CANCELLED,
+    APPROVED,
+    REJECTED
 }
