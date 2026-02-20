@@ -1,12 +1,17 @@
 package com.prerana.userservice.service;
 
 import com.prerana.userservice.dto.*;
+import com.prerana.userservice.entity.SubscriptionPlanEntity;
 import com.prerana.userservice.entity.UserEntity;
+import com.prerana.userservice.entity.UserSubscriptionEntity;
 import com.prerana.userservice.enums.Role;
+import com.prerana.userservice.enums.SubscriptionStatus;
 import com.prerana.userservice.enums.UserType;
 import com.prerana.userservice.exceptions.MobileNumberOTPNotVerified;
 import com.prerana.userservice.exceptions.UserAlreadyExistException;
+import com.prerana.userservice.repository.SubscriptionPlanRepository;
 import com.prerana.userservice.repository.UserRepository;
+import com.prerana.userservice.repository.UserSubscriptionRepository;
 import com.prerana.userservice.store.TempUserStore;
 import com.prerana.userservice.util.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +20,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -37,7 +44,13 @@ public class AuthService {
 
     @Autowired
     private PasswordEncoder encoder;
-    // 1️⃣ SEND OTP
+
+    @Autowired
+    private SubscriptionPlanRepository planRepo;
+
+    @Autowired
+    private UserSubscriptionRepository userSubscriptionRepo;
+
     public void sendOtp(String mobileNumber) {
 
         if (userRepository.findByMobileNumber(mobileNumber).isPresent()) {
@@ -47,12 +60,10 @@ public class AuthService {
         otpService.generateAndSendOtp(mobileNumber);
     }
 
-    // 2️⃣ VERIFY OTP
     public boolean verifyOtp(VerifyOtpRequestDto req) {
         return otpService.verifyOtp(req.getMobileNumber(), req.getOtp());
     }
 
-    // 3️⃣ SET PASSWORD (TEMPORARY)
     public void setPassword(SetPasswordRequestDto req) {
 
         if (!otpService.isMobileVerified(req.getMobileNumber())) {
@@ -63,7 +74,6 @@ public class AuthService {
         tempStore.storePassword(req.getMobileNumber(), encryptedPw);
     }
 
-    // 4️⃣ FINAL SIGNUP
     public void signup(SignUpRequestDto req) {
 
         if (!otpService.isMobileVerified(req.getMobileNumber())) {
@@ -91,10 +101,32 @@ public class AuthService {
 
         userRepository.save(user);
 
+        assignFreePlan(user);
+
         tempStore.clear(req.getMobileNumber());
     }
 
-//    public LoginResponseDto login(String mobile, String password,String userType) {
+
+    private void assignFreePlan(UserEntity user) {
+
+        SubscriptionPlanEntity freePlan =
+                planRepo.findByCodeAndUserType("FREE", UserType.INDIVIDUAL)
+                        .orElseThrow(() -> new RuntimeException("FREE plan missing"));
+
+        UserSubscriptionEntity subscription =
+                UserSubscriptionEntity.builder()
+                        .user(user)
+                        .plan(freePlan)
+                        .startDate(LocalDateTime.now())
+                        .status(SubscriptionStatus.ACTIVE)
+                        .endDate(LocalDateTime.now().plusDays(freePlan.getDurationDays()))
+                        .active(true)
+                        .build();
+
+        userSubscriptionRepo.save(subscription);
+    }
+
+    //    public LoginResponseDto login(String mobile, String password,String userType) {
 //
 //        UserEntity user = userRepository.findByMobileNumber(mobile)
 //                .orElseThrow(() -> new RuntimeException("User not found"));

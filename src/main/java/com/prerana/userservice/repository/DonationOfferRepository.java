@@ -54,4 +54,35 @@ public interface DonationOfferRepository extends JpaRepository<DonationOfferEnti
             @Param("status") DonationOfferStatus status,
             Pageable pageable
     );
+
+    Long countByUser_Id(Long userId);
+
+
+    @Query("select coalesce(sum(d.amount),0) from DonationOfferEntity d where d.user.id = :userId")
+    Long sumAmountByUserId(Long userId);
+
+    long countByUser_IdAndStatus(Long userId, DonationOfferStatus status);
+
+    @Query("""
+select coalesce(sum(d.amount),0)
+from DonationOfferEntity d
+where d.user.id = :userId
+and d.status = 'COMPLETED'
+""")
+    Long sumCompletedDonationAmount(@Param("userId") Long userId);
+
+    long countByUser_IdAndStatusIn(Long userId,List<DonationOfferStatus> statuses);
+
+    @Query("""
+SELECT COUNT(d)
+FROM DonationOfferEntity d
+WHERE d.user.id = :userId
+AND d.status IN :statuses
+AND d.createdAt >= :from
+""")
+    long countForSubscription(
+            @Param("userId") Long userId,
+            @Param("statuses") List<DonationOfferStatus> statuses,
+            @Param("from") LocalDateTime from
+    );
 }

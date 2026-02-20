@@ -1,5 +1,6 @@
 package com.prerana.userservice.entity;
 
+import com.prerana.userservice.dto.PriorityLevel;
 import com.prerana.userservice.enums.DonationCategory;
 import com.prerana.userservice.enums.HelpRequestStatus;
 import com.prerana.userservice.enums.HelpType;
@@ -43,4 +44,9 @@ public class HelpRequestEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private HelpRequestStatus status = HelpRequestStatus.OPEN;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PriorityLevel priority; // NORMAL, PRIORITY
+
 }

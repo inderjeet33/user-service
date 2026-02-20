@@ -59,4 +59,7 @@ public class CampaignEntity extends BaseEntity {
 
     @Column(length = 500)
     private String rejectionReason;
+
+    private Integer priority;
+
 }

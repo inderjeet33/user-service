@@ -52,6 +52,13 @@ public class NGOProfileService {
     @Autowired
     private DonationOfferRepository donationOfferRepository;
 
+    @Autowired
+    private UserSubscriptionRepository userSubscriptionRepository;
+
+    @Autowired
+    private SubscriptionPlanRepository planRepo;
+
+
     private void validateNgoStatusChange(AssignmentStatus oldStatus, AssignmentStatus newStatus) {
 
         if (newStatus == AssignmentStatus.IN_PROGRESS &&
@@ -222,6 +229,25 @@ public class NGOProfileService {
 
         ngo.setActivationStatus(ActivationStatus.VERIFIED);
         ngoRepo.save(ngo);
+
+        UserEntity user= ngo.getUser();
+        if (userSubscriptionRepository.findFirstByUser_IdAndActiveTrue(user.getId()).isEmpty()) {
+
+            SubscriptionPlanEntity freePlan =
+                    planRepo.findByCodeAndUserType("FREE", UserType.NGO)
+                            .orElseThrow();
+
+            UserSubscriptionEntity sub = UserSubscriptionEntity.builder()
+                    .user(user)
+                    .plan(freePlan)
+                    .status(SubscriptionStatus.ACTIVE)
+                    .startDate(LocalDateTime.now())
+                    .endDate(LocalDateTime.now().plusDays(freePlan.getDurationDays()))
+                    .active(true)
+                    .build();
+
+            userSubscriptionRepository.save(sub);
+        }
     }
 
     @Transactional

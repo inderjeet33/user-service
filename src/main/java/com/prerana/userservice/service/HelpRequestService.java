@@ -27,14 +27,21 @@ import java.util.stream.Collectors;
 public class HelpRequestService {
 
     @Autowired
-    private final HelpRequestRepository helpRequestRepository;
+    private HelpRequestRepository helpRequestRepository;
+
     @Autowired
-    private final HelpRequestAssignmentRepository helpRequestAssignmentRepository;
+    private SubscriptionService subscriptionService;
+
     @Autowired
-    private final UserRepository userRepository;
+    private HelpRequestAssignmentRepository helpRequestAssignmentRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     public Page<ModeratorHelpRequestDto> getAllHelpRequests(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Sort sort = Sort.by("priority").descending()
+                .and(Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, sort);
 
         return helpRequestRepository.findAll(pageable)
                 .map(this::mapToModeratorDto);
@@ -80,6 +87,8 @@ public class HelpRequestService {
             dto.setHelperType(assignment.getHelperType().name());
         }
 
+        dto.setPriority(hr.getPriority().name());
+
         return dto;
     }
 
@@ -101,6 +110,9 @@ public class HelpRequestService {
         UserEntity helper = userRepository.findById(helperId)
                 .orElseThrow(() -> new RuntimeException("Helper not found"));
 
+        if(helper.getUserType().equals(UserType.CSR)) {
+            subscriptionService.validateCsrHelpLimit(helper.getId());
+        }
         UserEntity moderator = userRepository.findById(moderatorId)
                 .orElseThrow(() -> new RuntimeException("Moderator not found"));
 
@@ -133,6 +145,25 @@ public class HelpRequestService {
         helpRequestRepository.save(hr);
     }
 
+
+    @Transactional
+    public void updateHelpRequestAssignmentStatus(
+            Long helperId,
+            Long assignmentId,
+            AssignmentStatus newStatus
+    ) {
+
+        HelpRequestAssignmentEntity assignment =
+                helpRequestAssignmentRepository.findById(assignmentId)
+                        .orElseThrow(() -> new RuntimeException("Assignment not found"));
+
+        if (!assignment.getHelper().getId().equals(helperId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        assignment.setStatus(newStatus);
+        helpRequestAssignmentRepository.save(assignment);
+    }
 
     @Transactional
     public void updateHelpAssignmentStatus(
@@ -206,11 +237,22 @@ public class HelpRequestService {
     }
 
 
+    @Autowired
+    private SubscriptionGuardService subscriptionGuardService;
+
     @Transactional
     public HelpRequestResponseDto createHelpRequest(Long userId, HelpRequestCreateDto dto) {
 
+
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        subscriptionGuardService.checkHelpRequestAllowed(userId);
+
+        boolean isPriorityUser =
+                subscriptionService.hasFeature(userId, FeatureKey.PRIORITY_ASSIGNMENT);
+
+
 
         HelpRequestEntity entity = HelpRequestEntity.builder()
                 .user(user)
@@ -226,6 +268,9 @@ public class HelpRequestService {
                 .status(HelpRequestStatus.OPEN)
                 .build();
 
+        entity.setPriority(
+                isPriorityUser ? PriorityLevel.PRIORITY : PriorityLevel.NORMAL
+        );
         entity = helpRequestRepository.save(entity);
 
         return toDto(entity);
@@ -298,4 +343,13 @@ public class HelpRequestService {
 
         return helpers;
     }
+
+    public List<HelperDto> listHelpersOnUserType(UserType usertype) {
+        return userRepository.findHelpersByPriority(usertype)
+                .stream().map(u -> new HelperDto(
+                        u.getId(),
+                        u.getFullName(),
+                        u.getUserType())).toList();
+    }
+
 }

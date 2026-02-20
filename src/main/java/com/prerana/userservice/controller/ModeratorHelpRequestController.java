@@ -3,6 +3,7 @@ package com.prerana.userservice.controller;
 import com.prerana.userservice.dto.HelperDto;
 import com.prerana.userservice.dto.ModeratorHelpRequestDto;
 import com.prerana.userservice.enums.HelpRequestStatus;
+import com.prerana.userservice.enums.UserType;
 import com.prerana.userservice.service.HelpRequestService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,8 +31,8 @@ public class ModeratorHelpRequestController {
     }
 
     @GetMapping("/helpers")
-    public ResponseEntity<List<HelperDto>> listHelpers() {
-    List<HelperDto> dtos = service.listHelpers();
+    public ResponseEntity<List<HelperDto>> listHelpers(@RequestParam UserType userType) {
+    List<HelperDto> dtos = service.listHelpersOnUserType(userType);
     return ResponseEntity.ok(dtos);
     }
 

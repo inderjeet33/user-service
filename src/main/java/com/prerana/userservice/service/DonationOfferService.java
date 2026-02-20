@@ -59,8 +59,12 @@ public class DonationOfferService {
     @Autowired
     private NGOProfileRepository nGOProfileRepository;
 
+    @Autowired
+    private SubscriptionGuardService subscriptionGuardService;
+
     public DonationOffersRequestDto createDonationOffer(Long userId, DonationOffersRequestDto dto) {
 
+//        subscriptionGuardService.checkDonationOfferCreation(userId);
         Optional<UserEntity> user = userRepository.findById(userId);
         DonationOfferEntity offer = DonationOfferEntity.builder()
                 .user(user.get())

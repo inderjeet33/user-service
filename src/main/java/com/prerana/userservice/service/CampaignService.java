@@ -5,6 +5,7 @@ import com.prerana.userservice.entity.*;
 import com.prerana.userservice.enums.*;
 import com.prerana.userservice.exceptions.InvalidRaisedAmountException;
 import com.prerana.userservice.exceptions.NgoProfileMissingException;
+import com.prerana.userservice.exceptions.SubscriptionLimitExceededException;
 import com.prerana.userservice.mapper.CampaignDtoMappper;
 import com.prerana.userservice.repository.CampaignRepository;
 import com.prerana.userservice.repository.CampaignUpdateRepository;
@@ -52,11 +53,32 @@ public class CampaignService {
     @Autowired
     private NGOProfileRepository profileRepository;
 
+    @Autowired
+    private SubscriptionService subscriptionService;
+
+
     @Transactional
     public CampaignResponseDto createCampaign(CreateCampaignDto dto, Long ownerId, MultipartFile image) {
         UserEntity owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new RuntimeException("Owner not found"));
 
+        SubscriptionPlanEntity plan =
+                subscriptionService.getActivePlanOrFree(ownerId, UserType.NGO);
+
+//        int maxCampaigns = subscriptionService.getLimitV2(
+//                ownerId, FeatureKey.ACTIVE_CAMPAIGNS
+//        );
+//
+//        long activeCampaigns =
+//                campaignRepository.countByNgo_IdAndStatusIn(
+//                        ownerId,
+//                        List.of( CampaignStatus.ACTIVE)
+//                );
+//
+//        if (activeCampaigns >= maxCampaigns) {
+//            throw new SubscriptionLimitExceededException(
+//                    "Campaign limit reached. Upgrade your plan.");
+//        }
         checkNgoVerified(owner);
         String imageUrl= "";
         try {
@@ -64,6 +86,21 @@ public class CampaignService {
         }catch(IOException e){
             log.error("Got io exception");
         }
+        int limit = subscriptionService
+                .getLimitV2(ownerId, FeatureKey.CAMPAIGN_CREATE);
+
+        long createdCount =
+                campaignRepository.countByOwner_IdAndStatusIn(
+                        ownerId,
+                        List.of( CampaignStatus.PENDING_FOR_APPROVAL,CampaignStatus.ACTIVE)
+                );
+
+        if (createdCount >= limit) {
+            throw new SubscriptionLimitExceededException(
+                    "Upgrade plan to create more campaigns");
+        }
+        SubscriptionPlanEntity entity =  subscriptionService.getActivePlanOrFree(ownerId,UserType.NGO);
+        int priority = entity.getPriority();
         CampaignEntity campaign = CampaignEntity.builder()
                 .owner(owner)
                 .ownerType(OwnerType.NGO)
@@ -81,6 +118,7 @@ public class CampaignService {
                 .beneficiaryType(dto.getBeneficiaryType())
                 .beneficiaryCount(dto.getBeneficiaryCount())
                 .raisedAmount(dto.getRaisedAmount() != null ? dto.getRaisedAmount() : 0.0)
+                .priority(priority)
                 .build();
 
 
@@ -214,9 +252,16 @@ public class CampaignService {
     }
 
     public List<CampaignResponseDto> getCampaignsByStatus(CampaignStatus status) {
-        return campaignRepository.findByStatus(status)
+//        return campaignRepository.findByStatus(status)
+//                .stream()
+//                .map(campaignDtoMappper::toDto).map(this::populateOtherDetails)
+//                .toList();
+
+        return campaignRepository
+                .findByStatusWithNgoPriority(status)
                 .stream()
-                .map(campaignDtoMappper::toDto).map(this::populateOtherDetails)
+                .map(campaignDtoMappper::toDto)
+                .map(this::populateOtherDetails)
                 .toList();
     }
 
@@ -237,6 +282,19 @@ public class CampaignService {
         CampaignEntity c = campaignRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Campaign not found"));
 
+        int activeLimit = subscriptionService
+                .getLimitV2(c.getOwner().getId(), FeatureKey.ACTIVE_CAMPAIGNS);
+
+        long activeCount =
+                campaignRepository.countByOwner_IdAndStatus(
+                        c.getOwner().getId(),
+                        CampaignStatus.ACTIVE
+                );
+
+        if (activeCount >= activeLimit) {
+            throw new SubscriptionLimitExceededException(
+                    "Upgrade plan to activate more campaigns");
+        }
         c.setStatus(CampaignStatus.ACTIVE);
         c.setRejectionReason(null);
 

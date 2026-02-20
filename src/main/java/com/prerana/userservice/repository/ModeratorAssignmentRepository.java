@@ -64,4 +64,11 @@ public interface ModeratorAssignmentRepository extends JpaRepository<ModeratorAs
 
     Optional<ModeratorAssignmentEntity> findFirstByDonationRequest_IdAndStatusIn(Long id,List<AssignmentStatus> assignmentStatus);
 
+    @Query("""
+    select count(distinct a.receiver.id)
+    from ModeratorAssignmentEntity a
+    where a.donor.id = :donorId
+""")
+    Long countDistinctReceiverByDonor_Id(Long donorId);
+
 }

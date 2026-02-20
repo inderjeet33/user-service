@@ -36,6 +36,9 @@ public class ModeratorController {
 
 
     @Autowired
+    private CSRProfileService csrService;
+
+    @Autowired
     private VolunteerService volunteerService;
 
     @Autowired
@@ -63,6 +66,25 @@ public class ModeratorController {
         return ResponseEntity.ok(assignment);
     }
 
+    @GetMapping("/csr/profiles")
+    public ResponseEntity<List<CsrProfileDto>> list() {
+        return ResponseEntity.ok(csrService.getAllForModerator());
+    }
+
+    @PostMapping("/csr/{id}/approve")
+    public ResponseEntity<?> approve(@PathVariable Long id) {
+        csrService.approve(id);
+        return ResponseEntity.ok("CSR approved");
+    }
+
+    @PostMapping("/csr/{id}/reject")
+    public ResponseEntity<?> reject(
+            @PathVariable Long id,
+            @RequestParam String reason
+    ) {
+        csrService.reject(id, reason);
+        return ResponseEntity.ok("CSR rejected");
+    }
 
     @GetMapping("/volunteer/offers")
     public ResponseEntity<Page<VolunteerOffersRequestDto>> getAllRequests(

@@ -20,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/donations")
-@PreAuthorize("hasAuthority('TYPE_INDIVIDUAL')")
+@PreAuthorize("hasAnyAuthority('TYPE_INDIVIDUAL', 'TYPE_CSR')")
 @RequiredArgsConstructor
 public class DonationOfferController {
 
@@ -31,12 +31,12 @@ public class DonationOfferController {
     private CertificateService certificateService;
 
     @PostMapping("/create")
-    public DonationOffersRequestDto createDonationOffer(
+    public ResponseEntity<DonationOffersRequestDto> createDonationOffer(
             @RequestBody DonationOffersRequestDto dto,
             HttpServletRequest request
     ) {
         Long userId = (Long) request.getAttribute("userId");
-        return donationOfferService.createDonationOffer(userId, dto);
+        return ResponseEntity.ok(donationOfferService.createDonationOffer(userId, dto));
     }
 
     @GetMapping("/my-offers")

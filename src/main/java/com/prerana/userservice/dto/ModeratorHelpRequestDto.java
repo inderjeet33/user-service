@@ -33,4 +33,6 @@ public class ModeratorHelpRequestDto extends BaseDto {
     private String helperName;
     private String helperType;
     private AssignmentStatus assignmentStatus;
+
+    private String priority;
 }
