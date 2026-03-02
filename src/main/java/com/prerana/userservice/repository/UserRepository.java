@@ -30,4 +30,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     List<UserEntity> findHelpersByPriority(@Param("type") UserType type);
 
 
+
+
 }

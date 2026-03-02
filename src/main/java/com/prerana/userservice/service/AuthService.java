@@ -46,6 +46,9 @@ public class AuthService {
     private PasswordEncoder encoder;
 
     @Autowired
+    private SubscriptionService subscriptionService;
+
+    @Autowired
     private SubscriptionPlanRepository planRepo;
 
     @Autowired
@@ -110,7 +113,7 @@ public class AuthService {
     private void assignFreePlan(UserEntity user) {
 
         SubscriptionPlanEntity freePlan =
-                planRepo.findByCodeAndUserType("FREE", UserType.INDIVIDUAL)
+                planRepo.findByCodeAndUserType("FREE", user.getUserType())
                         .orElseThrow(() -> new RuntimeException("FREE plan missing"));
 
         UserSubscriptionEntity subscription =
@@ -166,6 +169,8 @@ public LoginResponseDto login(String mobile, String password, String userType) {
                 "Invalid mobile number or password"
         );
     }
+    subscriptionService.ensureFreeSubscriptionIfMissing(user);
+
 
     String token = jwt.generateToken(
             mobile,

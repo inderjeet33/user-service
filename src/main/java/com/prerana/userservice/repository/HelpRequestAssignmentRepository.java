@@ -2,6 +2,7 @@ package com.prerana.userservice.repository;
 
 import com.prerana.userservice.entity.HelpRequestAssignmentEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.enums.HelpRequestStatus;
 import com.prerana.userservice.enums.UserType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -47,5 +48,11 @@ public interface HelpRequestAssignmentRepository extends JpaRepository<HelpReque
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
+
+    List<HelpRequestAssignmentEntity> findByHelper_IdAndStatusInOrderByCreatedAtDesc(
+            Long helperId,
+            List<AssignmentStatus> statuses
+    );
+    Optional<HelpRequestAssignmentEntity> findTopByHelpRequest_IdAndStatusInOrderByCreatedAtDesc(Long id, List<AssignmentStatus> status);
 
 }

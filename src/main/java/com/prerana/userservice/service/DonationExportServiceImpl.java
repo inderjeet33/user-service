@@ -66,7 +66,7 @@ public class DonationExportServiceImpl implements DonationExportService {
 
         List<DonationOfferEntity> donationOfferEntities = offerRepository.findAll();
         List<ModeratorAssignmentEntity> assignmentEntityList = moderatorAssignmentRepository.findByDonationRequest_IdInAndStatusIn(donationOfferEntities.stream().map(DonationOfferEntity::getId).toList(),
-                List.of(AssignmentStatus.ASSIGNED,AssignmentStatus.IN_PROGRESS,AssignmentStatus.COMPLETED));
+                List.of(AssignmentStatus.ASSIGNED,AssignmentStatus.COMPLETED));
         return ExcelExportUtil.exportModeratorDonationOffers(donationOfferEntities,assignmentEntityList);
     }
 

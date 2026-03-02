@@ -3,6 +3,7 @@ package com.prerana.userservice.service;
 import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.HelpRequestAssignmentEntity;
 import com.prerana.userservice.entity.HelpRequestEntity;
+import com.prerana.userservice.entity.ModeratorAssignmentEntity;
 import com.prerana.userservice.entity.UserEntity;
 import com.prerana.userservice.enums.*;
 import com.prerana.userservice.repository.HelpRequestAssignmentRepository;
@@ -34,6 +35,9 @@ public class HelpRequestService {
 
     @Autowired
     private HelpRequestAssignmentRepository helpRequestAssignmentRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Autowired
     private UserRepository userRepository;
@@ -129,6 +133,19 @@ public class HelpRequestService {
 
         hr.setStatus(HelpRequestStatus.ASSIGNED);
         helpRequestRepository.save(hr);
+
+        notificationService.notify(
+                helper,
+                "Help Request Assigned",
+                "You have been assigned a help request. Please review it."
+        );
+
+        notificationService.notify(
+                hr.getUser(),
+                "Help Assigned",
+                "Your help request has been assigned to a helper."
+        );
+
     }
 
     @Transactional
@@ -165,12 +182,36 @@ public class HelpRequestService {
         helpRequestAssignmentRepository.save(assignment);
     }
 
+//    @Transactional
+//    public void updateHelpAssignmentStatus(
+//            Long helperId,
+//            Long assignmentId,
+//            AssignmentStatus newStatus
+//    ) {
+//        HelpRequestAssignmentEntity assignment =
+//                helpRequestAssignmentRepository.findById(assignmentId)
+//                        .orElseThrow(() -> new RuntimeException("Assignment not found"));
+//
+//        if (!assignment.getHelper().getId().equals(helperId)) {
+//            throw new RuntimeException("Not authorized");
+//        }
+//
+//        assignment.setStatus(newStatus);
+//
+//        HelpRequestEntity hr = assignment.getHelpRequest();
+//        hr.setStatus(mapToHelpRequestStatus(newStatus));
+//
+//        helpRequestRepository.save(hr);
+//        helpRequestAssignmentRepository.save(assignment);
+//    }
+
     @Transactional
     public void updateHelpAssignmentStatus(
             Long helperId,
             Long assignmentId,
             AssignmentStatus newStatus
     ) {
+
         HelpRequestAssignmentEntity assignment =
                 helpRequestAssignmentRepository.findById(assignmentId)
                         .orElseThrow(() -> new RuntimeException("Assignment not found"));
@@ -179,29 +220,99 @@ public class HelpRequestService {
             throw new RuntimeException("Not authorized");
         }
 
-        assignment.setStatus(newStatus);
-
+        if (!assignment.isActive()) {
+            throw new RuntimeException("Cannot update historical assignment");
+        }
         HelpRequestEntity hr = assignment.getHelpRequest();
-        hr.setStatus(mapToHelpRequestStatus(newStatus));
+
+        // START WORK
+        if (newStatus == AssignmentStatus.IN_PROGRESS &&
+                assignment.getStatus() == AssignmentStatus.ASSIGNED) {
+
+            assignment.setStatus(AssignmentStatus.IN_PROGRESS);
+            hr.setStatus(HelpRequestStatus.IN_PROGRESS);
+        } else if (newStatus == AssignmentStatus.HELP_REJECTED_BY_HELPER &&
+                (assignment.getStatus() == AssignmentStatus.ASSIGNED || assignment.getStatus() == AssignmentStatus.IN_PROGRESS)) {
+
+            assignment.setStatus(AssignmentStatus.HELP_REJECTED_BY_HELPER);
+            hr.setStatus(HelpRequestStatus.OPEN);
+        }
+        // MARK DELIVERED
+        else if (newStatus == AssignmentStatus.COMPLETED &&
+                assignment.getStatus() == AssignmentStatus.IN_PROGRESS) {
+
+            assignment.setStatus(AssignmentStatus.COMPLETED);
+            hr.setStatus(HelpRequestStatus.DELIVERED);
+        } else {
+            throw new RuntimeException("Invalid status transition");
+        }
+
+
 
         helpRequestRepository.save(hr);
         helpRequestAssignmentRepository.save(assignment);
     }
 
-    private HelpRequestStatus mapToHelpRequestStatus(AssignmentStatus status) {
-        return switch (status) {
-            case IN_PROGRESS -> HelpRequestStatus.IN_PROGRESS;
-            case COMPLETED -> HelpRequestStatus.COMPLETED;
-            case CANCELLED_BY_DONOR-> HelpRequestStatus.OPEN;
-            default -> HelpRequestStatus.ASSIGNED;
-        };
-    }
 
 
-    public List<AssignedHelpRequestDto> getAssignedHelpRequestsForHelper(Long helperId) {
+//    public List<AssignedHelpRequestDto> getAssignedHelpRequestsForHelper(Long helperId) {
+//
+//        List<HelpRequestAssignmentEntity> assignments =
+//                helpRequestAssignmentRepository.findActiveAssignmentsForHelper(helperId);
+//
+//        return assignments.stream().map(a -> {
+//            HelpRequestEntity hr = a.getHelpRequest();
+//            UserEntity requester = hr.getUser();
+//
+//            AssignedHelpRequestDto dto = new AssignedHelpRequestDto();
+//
+//            // Assignment
+//            dto.setAssignmentId(a.getId());
+//            dto.setAssignmentStatus(a.getStatus());
+//            dto.setAssignedAt(a.getCreatedAt());
+//
+//            // Help request
+//            dto.setHelpRequestId(hr.getId());
+//            dto.setDonationCategory(hr.getDonationCategory().name());
+//            dto.setHelpType(hr.getHelpType().name());
+//            dto.setAmount(hr.getAmount());
+//            dto.setItemDetails(hr.getItemDetails());
+//            dto.setQuantity(hr.getQuantity());
+//            dto.setUrgency(hr.getUrgency());
+//            dto.setLocation(hr.getLocation());
+//            dto.setPreferredContact(hr.getPreferredContact());
+//            dto.setReason(hr.getReason());
+//            dto.setHelpRequestStatus(hr.getStatus());
+//
+//            // Requester
+//            dto.setRequesterId(requester.getId());
+//            dto.setRequesterName(requester.getFullName());
+//            dto.setRequesterMobile(requester.getMobileNumber());
+//
+//            return dto;
+//        }).toList();
+//    }
+
+    public List<AssignedHelpRequestDto> getAssignedHelpRequestsForHelper(Long helperId, String view) {
+
+        List<AssignmentStatus> statuses;
+
+        if ("HISTORY".equalsIgnoreCase(view)) {
+            statuses = List.of(
+                    AssignmentStatus.COMPLETED,
+                    AssignmentStatus.HELP_REJECTED_BY_HELPER,
+                    AssignmentStatus.HELP_CANCELLED_BY_RECEIVER
+            );
+        } else {
+            statuses = List.of(
+                    AssignmentStatus.ASSIGNED,
+                    AssignmentStatus.IN_PROGRESS
+            );
+        }
 
         List<HelpRequestAssignmentEntity> assignments =
-                helpRequestAssignmentRepository.findActiveAssignmentsForHelper(helperId);
+                helpRequestAssignmentRepository
+                        .findByHelper_IdAndStatusInOrderByCreatedAtDesc(helperId, statuses);
 
         return assignments.stream().map(a -> {
             HelpRequestEntity hr = a.getHelpRequest();
@@ -209,12 +320,10 @@ public class HelpRequestService {
 
             AssignedHelpRequestDto dto = new AssignedHelpRequestDto();
 
-            // Assignment
             dto.setAssignmentId(a.getId());
             dto.setAssignmentStatus(a.getStatus());
             dto.setAssignedAt(a.getCreatedAt());
 
-            // Help request
             dto.setHelpRequestId(hr.getId());
             dto.setDonationCategory(hr.getDonationCategory().name());
             dto.setHelpType(hr.getHelpType().name());
@@ -227,7 +336,6 @@ public class HelpRequestService {
             dto.setReason(hr.getReason());
             dto.setHelpRequestStatus(hr.getStatus());
 
-            // Requester
             dto.setRequesterId(requester.getId());
             dto.setRequesterName(requester.getFullName());
             dto.setRequesterMobile(requester.getMobileNumber());
@@ -235,7 +343,6 @@ public class HelpRequestService {
             return dto;
         }).toList();
     }
-
 
     @Autowired
     private SubscriptionGuardService subscriptionGuardService;
@@ -276,15 +383,43 @@ public class HelpRequestService {
         return toDto(entity);
     }
 
-    public List<HelpRequestHistoryDto> getMyHelpRequests(Long userId) {
+//    public List<HelpRequestHistoryDto> getMyHelpRequests(Long userId) {
+//
+//        return helpRequestRepository
+//                .findByUser_IdOrderByCreatedAtDesc(userId)
+//                .stream()
+//                .map(this::mapToHistoryDto)
+//
+//                .collect(Collectors.toList());
+//    }
+
+    public List<HelpRequestHistoryDto> getMyHelpRequests(Long userId, String view) {
+
+        List<HelpRequestStatus> statuses;
+
+        if ("HISTORY".equalsIgnoreCase(view)) {
+            statuses = List.of(
+                    HelpRequestStatus.COMPLETED,
+                    HelpRequestStatus.CANCELLED,
+                    HelpRequestStatus.REJECTED
+            );
+        } else { // ACTIVE default
+            statuses = List.of(
+                    HelpRequestStatus.OPEN,
+                    HelpRequestStatus.APPROVED,
+                    HelpRequestStatus.ASSIGNED,
+                    HelpRequestStatus.IN_PROGRESS,
+                    HelpRequestStatus.DELIVERED
+            );
+        }
 
         return helpRequestRepository
-                .findByUser_IdOrderByCreatedAtDesc(userId)
+                .findByUser_IdAndStatusInOrderByCreatedAtDesc(userId, statuses)
                 .stream()
                 .map(this::mapToHistoryDto)
-
                 .collect(Collectors.toList());
     }
+
 
     private HelpRequestHistoryDto mapToHistoryDto(HelpRequestEntity e) {
 
@@ -303,8 +438,20 @@ public class HelpRequestService {
         dto.setStatus(e.getStatus());
         dto.setCreatedAt(e.getCreatedAt());
 
-        return dto;
+        Optional<HelpRequestAssignmentEntity> assignmentOpt =
+                helpRequestAssignmentRepository
+                        .findTopByHelpRequest_IdOrderByCreatedAtDesc(e.getId());
 
+        if (assignmentOpt.isPresent()) {
+            HelpRequestAssignmentEntity assignment = assignmentOpt.get();
+            UserEntity helper = assignment.getHelper();
+
+            dto.setReceiverName(helper.getFullName());
+            dto.setReceiverMobile(helper.getMobileNumber());
+            dto.setReceiverEmail(helper.getEmail());
+        }
+
+        return dto;
     }
 
         private HelpRequestResponseDto toDto(HelpRequestEntity entity) {
@@ -350,6 +497,66 @@ public class HelpRequestService {
                         u.getId(),
                         u.getFullName(),
                         u.getUserType())).toList();
+    }
+
+    @Transactional
+    public void confirmHelpReceived(Long userId, Long helpRequestId) {
+
+        HelpRequestEntity hr = helpRequestRepository.findById(helpRequestId)
+                .orElseThrow(() -> new RuntimeException("Help request not found"));
+
+        if (!hr.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Not authorized");
+        }
+
+        if (hr.getStatus() != HelpRequestStatus.DELIVERED) {
+            throw new RuntimeException("Help not yet delivered");
+        }
+
+        hr.setStatus(HelpRequestStatus.COMPLETED);
+        helpRequestRepository.save(hr);
+
+        HelpRequestAssignmentEntity assignment =
+                helpRequestAssignmentRepository.findTopByHelpRequest_IdAndStatusInOrderByCreatedAtDesc(
+                        hr.getId(),
+                        List.of(AssignmentStatus.COMPLETED)
+                ).orElseThrow(() -> new RuntimeException("Assignment not found"));
+
+        assignment.setStatus(AssignmentStatus.COMPLETED);
+        helpRequestAssignmentRepository.save(assignment);
+
+//        completeAssignment(offer.getAmount(), assignment);
+    }
+
+    @Transactional
+    public void cancelHelpRequest(Long userId, Long helpRequestId) {
+
+        HelpRequestEntity hr = helpRequestRepository.findById(helpRequestId)
+                .orElseThrow(() -> new RuntimeException("Not found"));
+
+        if (!hr.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Not authorized");
+        }
+
+        if (!(hr.getStatus() == HelpRequestStatus.OPEN ||
+                hr.getStatus() == HelpRequestStatus.APPROVED || hr.getStatus() == HelpRequestStatus.ASSIGNED)) {
+            throw new RuntimeException("Cannot cancel at this stage");
+        }
+
+        hr.setStatus(HelpRequestStatus.CANCELLED);
+        helpRequestRepository.save(hr);
+
+        Optional<HelpRequestAssignmentEntity> optionalAssignment =
+                helpRequestAssignmentRepository.findTopByHelpRequest_IdAndStatusInOrderByCreatedAtDesc(
+                        hr.getId(),
+                        List.of(AssignmentStatus.ASSIGNED,AssignmentStatus.IN_PROGRESS)
+                );
+
+        if (optionalAssignment.isPresent()) {
+            HelpRequestAssignmentEntity assignment = optionalAssignment.get();
+            assignment.setStatus(AssignmentStatus.HELP_CANCELLED_BY_RECEIVER);
+            helpRequestAssignmentRepository.save(assignment);
+        }
     }
 
 }

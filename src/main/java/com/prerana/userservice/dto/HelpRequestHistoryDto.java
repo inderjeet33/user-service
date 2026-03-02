@@ -24,4 +24,7 @@ public class HelpRequestHistoryDto {
 
     private HelpRequestStatus status;
     private LocalDateTime createdAt;
+    private String receiverName;
+    private String receiverMobile;
+    private String receiverEmail;
 }

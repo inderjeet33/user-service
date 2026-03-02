@@ -45,7 +45,5 @@ public class ModeratorAssignmentEntity extends BaseEntity {
 
 
     public boolean isActive() {
-        return status == AssignmentStatus.ASSIGNED ||
-                status == AssignmentStatus.IN_PROGRESS;
-    }
+        return status == AssignmentStatus.ASSIGNED;}
 }

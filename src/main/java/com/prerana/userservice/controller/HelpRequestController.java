@@ -8,6 +8,7 @@ import com.prerana.userservice.enums.AssignmentStatus;
 import com.prerana.userservice.service.HelpRequestService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +21,8 @@ import java.util.List;
 @PreAuthorize("hasAuthority('TYPE_INDIVIDUAL')")
 public class HelpRequestController {
 
-    private final HelpRequestService helpRequestService;
+    @Autowired
+    private HelpRequestService helpRequestService;
 
     @PostMapping("/create")
     public ResponseEntity<HelpRequestResponseDto> createHelpRequest(
@@ -34,15 +36,15 @@ public class HelpRequestController {
     }
 
     @GetMapping("/individual/assigned-help-requests")
-    @PreAuthorize("hasAuthority('TYPE_INDIVIDUAL')")
-    public ResponseEntity<List<AssignedHelpRequestDto>> individualAssignedHelpRequests(
-            HttpServletRequest request
-    ) {
-        Long userId = (Long) request.getAttribute("userId");
-        return ResponseEntity.ok(
-                helpRequestService.getAssignedHelpRequestsForHelper(userId)
-        );
-    }
+//    @PreAuthorize("hasAuthority('TYPE_INDIVIDUAL')")
+//    public ResponseEntity<List<AssignedHelpRequestDto>> individualAssignedHelpRequests(
+//            HttpServletRequest request
+//    ) {
+//        Long userId = (Long) request.getAttribute("userId");
+//        return ResponseEntity.ok(
+//                helpRequestService.getAssignedHelpRequestsForHelper(userId)
+//        );
+//    }
 
 
     @PostMapping("/assigned-help-requests/{assignmentId}/update-status")
@@ -57,12 +59,41 @@ public class HelpRequestController {
     }
 
 
+//    @GetMapping("/my")
+//    public ResponseEntity<List<HelpRequestHistoryDto>> myHelpRequests(
+//            HttpServletRequest request
+//    ) {
+//        Long userId = (Long) request.getAttribute("userId");
+//        return ResponseEntity.ok(helpRequestService.getMyHelpRequests(userId));
+//    }
+
     @GetMapping("/my")
     public ResponseEntity<List<HelpRequestHistoryDto>> myHelpRequests(
+            @RequestParam(defaultValue = "ACTIVE") String view,
             HttpServletRequest request
     ) {
         Long userId = (Long) request.getAttribute("userId");
-        return ResponseEntity.ok(helpRequestService.getMyHelpRequests(userId));
+        return ResponseEntity.ok(
+                helpRequestService.getMyHelpRequests(userId, view)
+        );
+    }
+    @PutMapping("/{id}/confirm")
+    public ResponseEntity<?> confirmHelpReceived(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = (Long) request.getAttribute("userId");
+        helpRequestService.confirmHelpReceived(userId, id);
+        return ResponseEntity.ok("Help confirmed successfully");
     }
 
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelHelpRequest(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        Long userId = (Long) request.getAttribute("userId");
+        helpRequestService.cancelHelpRequest(userId, id);
+        return ResponseEntity.ok().build();
+    }
 }

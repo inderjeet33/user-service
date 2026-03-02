@@ -7,5 +7,6 @@ public enum HelpRequestStatus {
     COMPLETED,
     CANCELLED,
     APPROVED,
-    REJECTED
+    REJECTED,
+    DELIVERED
 }

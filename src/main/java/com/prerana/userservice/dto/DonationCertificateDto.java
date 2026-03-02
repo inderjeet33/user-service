@@ -4,6 +4,7 @@ import com.prerana.userservice.enums.DonationCategory;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.SuperBuilder;
 
 @Data
 @AllArgsConstructor

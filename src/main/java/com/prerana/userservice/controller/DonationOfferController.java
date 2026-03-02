@@ -39,10 +39,31 @@ public class DonationOfferController {
         return ResponseEntity.ok(donationOfferService.createDonationOffer(userId, dto));
     }
 
-    @GetMapping("/my-offers")
-    public ResponseEntity<List<DonationOffersRequestDto>> getMyOffers(HttpServletRequest request) {
+    @PutMapping("/{offerId}/confirm")
+    public ResponseEntity<String> confirmDonation(
+            @PathVariable Long offerId,
+            HttpServletRequest request) {
+
         Long userId = (Long) request.getAttribute("userId");
-        List<DonationOffersRequestDto> offers = donationOfferService.getOffersByUser(userId);
+        String response = donationOfferService.confirmDelivery(offerId, userId);
+
+        return ResponseEntity.ok(response);
+    }
+//    @GetMapping("/my-offers")
+//    public ResponseEntity<List<DonationOffersRequestDto>> getMyOffers(HttpServletRequest request) {
+//        Long userId = (Long) request.getAttribute("userId");
+//        List<DonationOffersRequestDto> offers = donationOfferService.getOffersByUser(userId);
+//        return ResponseEntity.ok(offers);
+//    }
+
+    @GetMapping("/my-offers")
+    public ResponseEntity<List<DonationOffersRequestDto>> getMyOffers(
+            @RequestParam(required = false, defaultValue = "ACTIVE") String view,
+            HttpServletRequest request
+    ) {
+        Long userId = (Long) request.getAttribute("userId");
+        List<DonationOffersRequestDto> offers =
+                donationOfferService.getOffersByUser(userId, view);
         return ResponseEntity.ok(offers);
     }
 

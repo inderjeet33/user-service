@@ -35,6 +35,11 @@ public interface DonationOfferRepository extends JpaRepository<DonationOfferEnti
             @Param("end") LocalDateTime endOfDay
     );
 
+    List<DonationOfferEntity> findByUser_IdAndStatusInOrderByCreatedAtDesc(
+            Long userId,
+            List<DonationOfferStatus> statuses
+    );
+
     @Query("""
         SELECT d FROM DonationOfferEntity d
         JOIN d.user u
@@ -85,4 +90,59 @@ AND d.createdAt >= :from
             @Param("statuses") List<DonationOfferStatus> statuses,
             @Param("from") LocalDateTime from
     );
+
+//    @Query("""
+//    SELECT d FROM DonationOfferEntity d
+//    WHERE
+//        (:search IS NULL OR
+//            LOWER(d.reason) LIKE LOWER(CONCAT('%', :search, '%'))
+//            OR LOWER(d.user.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
+//        )
+//        AND (:category IS NULL OR d.donationCategory = :category)
+//        AND (:type IS NULL OR d.helpType = :type)
+//        AND (
+//            (:status IS NOT NULL AND d.status = :status)
+//            OR
+//            (:status IS NULL AND :viewStatuses IS NOT NULL AND d.status IN :viewStatuses)
+//            OR
+//            (:status IS NULL AND :viewStatuses IS NULL)
+//        )
+//""")
+//    Page<DonationOfferEntity> searchWithView(
+//            @Param("search") String search,
+//            @Param("category") DonationCategory category,
+//            @Param("type") HelpType type,
+//            @Param("status") DonationOfferStatus status,
+//            @Param("viewStatuses") List<DonationOfferStatus> viewStatuses,
+//            Pageable pageable
+//    );
+
+    @Query("""
+    SELECT d FROM DonationOfferEntity d
+    JOIN d.user u
+    WHERE
+        (:category IS NULL OR d.donationCategory = :category)
+        AND (:type IS NULL OR d.helpType = :type)
+        AND (
+            (:status IS NOT NULL AND d.status = :status)
+            OR
+            (:status IS NULL AND :viewStatuses IS NOT NULL AND d.status IN :viewStatuses)
+            OR
+            (:status IS NULL AND :viewStatuses IS NULL)
+        )
+        AND (
+            :searchPattern IS NULL
+            OR LOWER(d.reason) LIKE :searchPattern
+            OR LOWER(u.fullName) LIKE :searchPattern
+        )
+""")
+    Page<DonationOfferEntity> searchWithView(
+            @Param("searchPattern") String searchPattern,
+            @Param("category") DonationCategory category,
+            @Param("type") HelpType type,
+            @Param("status") DonationOfferStatus status,
+            @Param("viewStatuses") List<DonationOfferStatus> viewStatuses,
+            Pageable pageable
+    );
+
 }

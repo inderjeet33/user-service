@@ -11,6 +11,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import static com.prerana.userservice.enums.AssignmentStatus.ASSIGNED;
+import static com.prerana.userservice.enums.AssignmentStatus.IN_PROGRESS;
+
 @Entity
 @Table(name = "help_request_assignments")
 @Data
@@ -42,4 +45,8 @@ public class HelpRequestAssignmentEntity extends BaseEntity {
     @Column(nullable = false)
     private AssignmentStatus status;
     // ASSIGNED, IN_PROGRESS, COMPLETED, REJECTED_BY_HELPER, CANCELLED
+
+    public boolean isActive() {
+        return status == ASSIGNED || status == IN_PROGRESS;
+    }
 }

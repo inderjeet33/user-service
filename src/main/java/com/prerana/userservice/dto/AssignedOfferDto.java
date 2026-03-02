@@ -30,4 +30,5 @@ public class AssignedOfferDto {
     private String helpType;
     private Integer quantity;
     private String itemDetails;
+    private DonationOfferStatus donationStatus;
 }

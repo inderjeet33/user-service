@@ -6,5 +6,7 @@ public enum DonationOfferStatus {
     IN_PROGRESS,    // contact ongoing
     COMPLETED,      // help delivered
     CANCELLED,      // donor cancelled
-    EXPIRED         // old / inactive
+    EXPIRED ,
+    DELIVERED,
+    UNDER_REVIEW
 }

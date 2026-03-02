@@ -22,9 +22,9 @@ public class CsrHelpRequestController {
     }
 
     @GetMapping("/assigned")
-    public List<AssignedHelpRequestDto> assigned(HttpServletRequest request) {
+    public List<AssignedHelpRequestDto> assigned(HttpServletRequest request, @RequestParam(defaultValue = "ACTIVE") String view) {
         Long csrId = (Long) request.getAttribute("userId");
-        return service.getAssignedHelpRequestsForHelper(csrId);
+        return service.getAssignedHelpRequestsForHelper(csrId,view);
     }
 
     @PostMapping("/{assignmentId}/update-status")
@@ -34,7 +34,8 @@ public class CsrHelpRequestController {
             HttpServletRequest request
     ) {
         Long csrId = (Long) request.getAttribute("userId");
-        service.updateHelpRequestAssignmentStatus(csrId, assignmentId, status);
+        service.updateHelpAssignmentStatus(csrId,assignmentId,status);
+//        service.updateHelpRequestAssignmentStatus(csrId, assignmentId, status);
         return ResponseEntity.ok("Updated");
     }
 }

@@ -47,6 +47,9 @@ public class ModeratorAssignmentService {
     @Autowired
     private CertificateRepository certificateRepo;
 
+    @Autowired
+    private NotificationService notificationService;
+
 
     public List<AssignmentHistoryDto> getAssignmentHistoryForDoantionId(Long donationRequestId){
         List<ModeratorAssignmentEntity> assignments = repository.findByDonationRequest_IdOrderByCreatedAtDesc(donationRequestId);
@@ -161,7 +164,6 @@ public class ModeratorAssignmentService {
             throw new RuntimeException("Receiver must be NGO or Individual Receiver.");
         }
 
-        // ❌ Block invalid offer states
         if (dr.getStatus() == DonationOfferStatus.IN_PROGRESS ||
                 dr.getStatus() == DonationOfferStatus.COMPLETED ||
                 dr.getStatus() == DonationOfferStatus.CANCELLED) {
@@ -173,7 +175,7 @@ public class ModeratorAssignmentService {
         Optional<ModeratorAssignmentEntity> activeAssignmentOpt =
                 repository.findFirstByDonationRequest_IdAndStatusIn(
                         dr.getId(),
-                        List.of(AssignmentStatus.ASSIGNED, AssignmentStatus.IN_PROGRESS)
+                        List.of(AssignmentStatus.ASSIGNED)
                 );
 
         if (dr.getStatus() == DonationOfferStatus.OPEN) {
@@ -227,6 +229,12 @@ public class ModeratorAssignmentService {
             return repository.save(newAssignment);
         }
 
+        notificationService.notify(
+                receiver,
+                "New Assignment",
+                "A new request has been assigned to you."
+        );
+
         throw new RuntimeException("Invalid donation offer state.");
     }
 
@@ -242,9 +250,6 @@ public class ModeratorAssignmentService {
         assignment.setStatus(newStatus);
 
         switch (newStatus) {
-            case IN_PROGRESS -> {
-                offer.setStatus(DonationOfferStatus.IN_PROGRESS);
-            }
 
             case COMPLETED -> {
                 offer.setStatus(DonationOfferStatus.COMPLETED);

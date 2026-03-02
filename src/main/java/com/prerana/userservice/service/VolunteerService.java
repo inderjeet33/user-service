@@ -1,18 +1,14 @@
 package com.prerana.userservice.service;
 
+import com.prerana.userservice.certificate.CertificatePdfGenerator;
 import com.prerana.userservice.dto.*;
-import com.prerana.userservice.entity.ModeratorAssignmentEntity;
-import com.prerana.userservice.entity.UserEntity;
-import com.prerana.userservice.entity.VolunteerAssignmentEntity;
-import com.prerana.userservice.entity.VolunteerRequestEntity;
+import com.prerana.userservice.entity.*;
 import com.prerana.userservice.enums.AssignmentStatus;
 import com.prerana.userservice.enums.UserType;
 import com.prerana.userservice.enums.VolunteerOfferStatus;
 import com.prerana.userservice.enums.VolunteerType;
 import com.prerana.userservice.mapper.VolunteerOfferDtoMapper;
-import com.prerana.userservice.repository.UserRepository;
-import com.prerana.userservice.repository.VolunteerAssignmentRepository;
-import com.prerana.userservice.repository.VolunteerRequestRepository;
+import com.prerana.userservice.repository.*;
 import io.micrometer.common.util.StringUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 //
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -45,6 +42,15 @@ public class VolunteerService {
 
     @Autowired
     private VolunteerOfferDtoMapper volunteerOfferDtoMapper;
+
+    @Autowired
+    private VolunteerCertificateRepository volunteerCertificateRepository;
+
+    @Autowired
+    private NGOProfileRepository ngoProfileRepository;
+
+    @Autowired
+    private CertificatePdfGenerator certificatePdfGenerator;
 
     @Transactional
     public VolunteerAssignmentEntity assignNgoForVolunteer(
@@ -83,8 +89,7 @@ public class VolunteerService {
                 assignmentRepo.findFirstByVolunteerRequest_IdAndStatusIn(
                         vr.getId(),
                         List.of(
-                                AssignmentStatus.ASSIGNED,
-                                AssignmentStatus.IN_PROGRESS
+                                AssignmentStatus.ASSIGNED
                         )
                 );
 
@@ -171,8 +176,23 @@ public class VolunteerService {
         return volunteerRepo.save(request);
     }
 
+//    @Transactional
+//    public void cancelRequest(Long requestId, Long userId) {
+//        VolunteerRequestEntity req = volunteerRepo.findById(requestId)
+//                .orElseThrow(() -> new RuntimeException("Request not found"));
+//
+//        if (!req.getUser().getId().equals(userId)) {
+//            throw new RuntimeException("Unauthorized");
+//        }
+//
+//        req.setStatus(VolunteerOfferStatus.CANCELLED);
+//        volunteerRepo.save(req);
+//    }
+
+
     @Transactional
     public void cancelRequest(Long requestId, Long userId) {
+
         VolunteerRequestEntity req = volunteerRepo.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
@@ -180,12 +200,53 @@ public class VolunteerService {
             throw new RuntimeException("Unauthorized");
         }
 
+        if (req.getStatus() == VolunteerOfferStatus.COMPLETED) {
+            throw new RuntimeException("Cannot cancel completed request");
+        }
+
         req.setStatus(VolunteerOfferStatus.CANCELLED);
         volunteerRepo.save(req);
+
+        Optional<VolunteerAssignmentEntity> assignmentOpt =
+                assignmentRepo.findFirstByVolunteerRequest_IdAndStatusIn(
+                        requestId,
+                        List.of(
+                                AssignmentStatus.ASSIGNED,
+                                AssignmentStatus.IN_PROGRESS
+                        )
+                );
+
+        assignmentOpt.ifPresent(a -> {
+            a.setStatus(AssignmentStatus.CANCELLED_BY_DONOR);
+            assignmentRepo.save(a);
+        });
     }
 
     public List<VolunteerRequestEntity> getMyRequests(Long userId) {
         return volunteerRepo.findByUser_IdOrderByCreatedAtDesc(userId);
+    }
+
+    public List<VolunteerRequestEntity> getMyRequests(Long userId, String view) {
+
+        List<VolunteerOfferStatus> statuses;
+
+        if ("HISTORY".equalsIgnoreCase(view)) {
+            statuses = List.of(
+                    VolunteerOfferStatus.COMPLETED,
+                    VolunteerOfferStatus.CANCELLED,
+                    VolunteerOfferStatus.EXPIRED
+            );
+        } else {
+            statuses = List.of(
+                    VolunteerOfferStatus.OPEN,
+                    VolunteerOfferStatus.ASSIGNED,
+                    VolunteerOfferStatus.IN_PROGRESS,
+                    VolunteerOfferStatus.DELIVERED
+            );
+        }
+
+        return volunteerRepo
+                .findByUser_IdAndStatusInOrderByCreatedAtDesc(userId, statuses);
     }
 
     public Page<VolunteerOffersRequestDto> search(
@@ -212,7 +273,6 @@ public class VolunteerService {
                             dto.getId(),
                             List.of(
                                     AssignmentStatus.ASSIGNED,
-                                    AssignmentStatus.IN_PROGRESS,
                                     AssignmentStatus.COMPLETED
                             )
                     );
@@ -247,4 +307,94 @@ public class VolunteerService {
             }
         }
     }
+
+    @Transactional
+    public void confirmVolunteerCompletion(Long userId, Long requestId) {
+
+        VolunteerRequestEntity req =
+                volunteerRepo.findById(requestId)
+                        .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        if (!req.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        if (req.getStatus() != VolunteerOfferStatus.DELIVERED) {
+            throw new RuntimeException("Volunteer work not delivered yet");
+        }
+
+        req.setStatus(VolunteerOfferStatus.COMPLETED);
+        volunteerRepo.save(req);
+
+        VolunteerAssignmentEntity assignment =
+                assignmentRepo
+                        .findFirstByVolunteerRequest_IdAndStatus(
+                                requestId,
+                                AssignmentStatus.COMPLETED
+                        )
+                        .orElseThrow(() -> new RuntimeException("Assignment not found"));
+
+        assignment.setStatus(AssignmentStatus.COMPLETED);
+        assignmentRepo.save(assignment);
+        if (!volunteerCertificateRepository.existsByAssignment_Id(assignment.getId())) {
+
+            VolunteerCertificateEntity cert =
+                    VolunteerCertificateEntity.builder()
+                            .assignment(assignment)
+                            .volunteer(assignment.getVolunteer())
+                            .volunteeredAt(assignment.getReceiver())
+                            .issuedDate(LocalDate.now())
+                            .build();
+
+            cert = volunteerCertificateRepository.save(cert);
+
+            cert.setCertificateId("VR-" + cert.getId());
+            volunteerCertificateRepository.save(cert);
+        }
+
+    }
+
+        @Transactional
+        public byte[] generateVolunteerCertificate(Long requestId, Long userId) {
+
+            VolunteerRequestEntity request =
+                    volunteerRepo.findById(requestId)
+                            .orElseThrow(() -> new RuntimeException("Request not found"));
+
+            if (!request.getUser().getId().equals(userId)) {
+                throw new RuntimeException("Not authorized");
+            }
+
+            if (request.getStatus() != VolunteerOfferStatus.COMPLETED) {
+                throw new RuntimeException("Volunteer work not completed");
+            }
+
+            VolunteerAssignmentEntity assignment =
+                    assignmentRepo
+                            .findFirstByVolunteerRequest_IdAndStatus(
+                                    requestId,
+                                    AssignmentStatus.COMPLETED
+                            )
+                            .orElseThrow(() -> new RuntimeException("Assignment not completed"));
+
+            VolunteerCertificateEntity cert =
+                    volunteerCertificateRepository.findByAssignment_Id(assignment.getId())
+                            .orElseThrow(() -> new RuntimeException("Certificate missing"));
+
+            NGOProfileEntity ngo =
+                    ngoProfileRepository.findByUser_id(assignment.getReceiver().getId())
+                            .orElseThrow(() -> new RuntimeException("NGO profile missing"));
+
+            VolunteerCertificateDto dto = VolunteerCertificateDto.builder()
+                    .certificateId(cert.getCertificateId())
+                    .volunteerName(request.getUser().getFullName())
+                    .ngoName(ngo.getNgoName())
+                    .volunteerType(request.getVolunteerType().name())
+                    .completedDate(cert.getIssuedDate().toString())
+                    .platformName("Prerana Helpline Foundation")
+                    .build();
+
+            return CertificatePdfGenerator.generateVolunteerCertificate(dto);
+        }
+
 }

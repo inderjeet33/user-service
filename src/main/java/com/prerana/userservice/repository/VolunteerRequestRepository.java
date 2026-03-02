@@ -16,6 +16,8 @@ public interface VolunteerRequestRepository extends JpaRepository<VolunteerReque
 
     List<VolunteerRequestEntity> findByUser_IdOrderByCreatedAtDesc(Long userId);
 
+    List<VolunteerRequestEntity> findByUser_IdAndStatusInOrderByCreatedAtDesc(Long userId,List<VolunteerOfferStatus> status);
+
     @Query("""
         SELECT d FROM VolunteerRequestEntity d
         JOIN d.user u
@@ -28,4 +30,10 @@ public interface VolunteerRequestRepository extends JpaRepository<VolunteerReque
         AND (:status IS NULL OR d.status = :status)
     """)
     Page<VolunteerRequestEntity> search(String search, VolunteerType type, VolunteerOfferStatus status, Pageable pageable);
+
+    long countByUser_Id(Long userId);
+
+    long countByUser_IdAndStatusIn(Long userId, List<VolunteerOfferStatus> statuses);
+
+    long countByUser_IdAndStatus(Long userId, VolunteerOfferStatus status);
 }

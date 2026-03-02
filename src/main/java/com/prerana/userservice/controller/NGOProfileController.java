@@ -3,6 +3,7 @@ package com.prerana.userservice.controller;
 import com.prerana.userservice.dto.*;
 import com.prerana.userservice.entity.NGOProfileEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.enums.DonationOfferStatus;
 import com.prerana.userservice.service.HelpRequestService;
 import com.prerana.userservice.service.JwtService;
 import com.prerana.userservice.service.NGOProfileService;
@@ -54,41 +55,89 @@ public class NGOProfileController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+//    @GetMapping("/assigned-offers")
+//    public ResponseEntity<List<AssignedOfferDto>> getAssignedOffers(
+//            HttpServletRequest request) {
+//
+//        Long ngoUserId = (Long)request.getAttribute("userId");
+//        return ResponseEntity.ok(profileService.getAssignedOffers(ngoUserId));
+//    }
+
     @GetMapping("/assigned-offers")
     public ResponseEntity<List<AssignedOfferDto>> getAssignedOffers(
-            HttpServletRequest request) {
+            @RequestParam(defaultValue = "ACTIVE") String view,
+            HttpServletRequest request
+    ) {
+        Long ngoUserId = (Long) request.getAttribute("userId");
 
-        Long ngoUserId = (Long)request.getAttribute("userId");
-        return ResponseEntity.ok(profileService.getAssignedOffers(ngoUserId));
+        return ResponseEntity.ok(
+                profileService.getAssignedOffers(ngoUserId, view)
+        );
     }
+
+//    @GetMapping("/assigned-volunteers")
+//    public ResponseEntity<List<AssignedVolunteerDto>> getAssignedVolunteers(
+//            HttpServletRequest request) {
+//
+//        Long ngoUserId = (Long) request.getAttribute("userId");
+//        return ResponseEntity.ok(
+//                profileService.getAssignedVolunteers(ngoUserId)
+//        );
+//    }
 
     @GetMapping("/assigned-volunteers")
     public ResponseEntity<List<AssignedVolunteerDto>> getAssignedVolunteers(
+            @RequestParam(defaultValue = "ACTIVE") String view,
             HttpServletRequest request) {
 
         Long ngoUserId = (Long) request.getAttribute("userId");
+
         return ResponseEntity.ok(
-                profileService.getAssignedVolunteers(ngoUserId)
+                profileService.getAssignedVolunteers(ngoUserId, view)
         );
     }
+//    @PostMapping("/assigned-offers/{assignmentId}/update-status")
+//    public ResponseEntity<?> updateAssignedOfferStatus(
+//            @PathVariable Long assignmentId,
+//            @RequestParam AssignmentStatus newStatus,
+//            HttpServletRequest request
+//    ) {
+//        Long ngoId = (Long)request.getAttribute("userId");
+//        return ResponseEntity.ok(profileService.updateAssignedOfferStatus(ngoId, assignmentId, newStatus));
+//    }
+
     @PostMapping("/assigned-offers/{assignmentId}/update-status")
     public ResponseEntity<?> updateAssignedOfferStatus(
             @PathVariable Long assignmentId,
-            @RequestParam AssignmentStatus newStatus,
-            HttpServletRequest request
-    ) {
-        Long ngoId = (Long)request.getAttribute("userId");
-        return ResponseEntity.ok(profileService.updateAssignedOfferStatus(ngoId, assignmentId, newStatus));
-    }
-
-    @GetMapping("/assigned-help-requests")
-    @PreAuthorize("hasAuthority('TYPE_NGO')")
-    public ResponseEntity<List<AssignedHelpRequestDto>> ngoAssignedHelpRequests(
+            @RequestParam DonationOfferStatus newStatus,
             HttpServletRequest request
     ) {
         Long ngoId = (Long) request.getAttribute("userId");
         return ResponseEntity.ok(
-                helpRequestService.getAssignedHelpRequestsForHelper(ngoId)
+                profileService.updateAssignedOfferStatus(ngoId, assignmentId, newStatus)
+        );
+    }
+
+//    @GetMapping("/assigned-help-requests")
+//    @PreAuthorize("hasAuthority('TYPE_NGO')")
+//    public ResponseEntity<List<AssignedHelpRequestDto>> ngoAssignedHelpRequests(
+//            HttpServletRequest request
+//    ) {
+//        Long ngoId = (Long) request.getAttribute("userId");
+//        return ResponseEntity.ok(
+//                helpRequestService.getAssignedHelpRequestsForHelper(ngoId)
+//        );
+//    }
+
+    @GetMapping("/assigned-help-requests")
+    public ResponseEntity<List<AssignedHelpRequestDto>> ngoAssignedHelpRequests(
+            @RequestParam(defaultValue = "ACTIVE") String view,
+            HttpServletRequest request
+    ) {
+        Long ngoId = (Long) request.getAttribute("userId");
+
+        return ResponseEntity.ok(
+                helpRequestService.getAssignedHelpRequestsForHelper(ngoId, view)
         );
     }
 

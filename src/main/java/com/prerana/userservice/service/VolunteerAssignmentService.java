@@ -39,7 +39,7 @@ public class VolunteerAssignmentService {
 
         if (assignmentRepo.existsByVolunteerRequest_IdAndStatusIn(
                 volunteerRequestId,
-                List.of(AssignmentStatus.ASSIGNED, AssignmentStatus.IN_PROGRESS)
+                List.of(AssignmentStatus.ASSIGNED)
         )) {
             throw new RuntimeException("Already assigned");
         }

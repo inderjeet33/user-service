@@ -100,6 +100,9 @@ public class CampaignService {
                     "Upgrade plan to create more campaigns");
         }
         SubscriptionPlanEntity entity =  subscriptionService.getActivePlanOrFree(ownerId,UserType.NGO);
+        int days = subscriptionService.getLimitV2(
+                ownerId, FeatureKey.CAMPAIGN_VISIBILITY_DAYS
+        );
         int priority = entity.getPriority();
         CampaignEntity campaign = CampaignEntity.builder()
                 .owner(owner)
@@ -112,6 +115,7 @@ public class CampaignService {
                 .deadline(dto.getDeadline())
                 .mediaUrls(dto.getMediaUrls())
                 .city(dto.getCity())
+                .expiresAt(LocalDateTime.now().plusDays(days))
                 .state(dto.getState())
                 .address(dto.getLocation())
                 .imageUrl(imageUrl)
@@ -224,7 +228,7 @@ public class CampaignService {
 
     public List<CampaignPublicDto> getPublicCampaigns() {
 
-        return campaignRepository.findByStatus(CampaignStatus.ACTIVE)
+        return campaignRepository.findByStatusAndExpiresAtAfter(CampaignStatus.ACTIVE,LocalDateTime.now())
                 .stream()
                 .map(c -> {
                     CampaignPublicDto dto = new CampaignPublicDto();
@@ -258,7 +262,7 @@ public class CampaignService {
 //                .toList();
 
         return campaignRepository
-                .findByStatusWithNgoPriority(status)
+                .findByStatusWithNgoPriorityAndExpiresAtAfter(status,LocalDateTime.now())
                 .stream()
                 .map(campaignDtoMappper::toDto)
                 .map(this::populateOtherDetails)

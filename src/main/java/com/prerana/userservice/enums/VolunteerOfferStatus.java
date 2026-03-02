@@ -6,5 +6,6 @@ public enum VolunteerOfferStatus {
     IN_PROGRESS,    // contact ongoing
     COMPLETED,      // help delivered
     CANCELLED,      // volunteer cancelled
-    EXPIRED         // old / inactive
+    EXPIRED,
+    DELIVERED// old / inactive
 }

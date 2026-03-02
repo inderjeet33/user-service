@@ -39,6 +39,9 @@ public class ModeratorController {
     private CSRProfileService csrService;
 
     @Autowired
+    private ModeratorUserService moderatorUserService;
+
+    @Autowired
     private VolunteerService volunteerService;
 
     @Autowired
@@ -86,6 +89,19 @@ public class ModeratorController {
         return ResponseEntity.ok("CSR rejected");
     }
 
+    @GetMapping("/users/{id}")
+    public ResponseEntity<ModeratorUserProfileDto> getUserProfile(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                moderatorUserService.getUserProfile(id)
+        );
+    }
+    @GetMapping("/users/{id}/full-profile")
+    public ResponseEntity<?> getFullUserProfile(@PathVariable Long id) {
+        return ResponseEntity.ok(moderatorUserService.getFullUserProfile(id));
+    }
+
     @GetMapping("/volunteer/offers")
     public ResponseEntity<Page<VolunteerOffersRequestDto>> getAllRequests(
             @RequestParam(defaultValue = "0") int page,
@@ -117,15 +133,38 @@ public class ModeratorController {
     }
 
 
-    @GetMapping("/moderator/offers")
-    public ResponseEntity<Page<DonationOffersRequestDto>> listDonationOffers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+//    @GetMapping("/moderator/offers")
+//    public ResponseEntity<Page<DonationOffersRequestDto>> listDonationOffers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+//
+//                                                                             @RequestParam(required = false) String search, @RequestParam(required = false) String category, @RequestParam(required = false) String type, @RequestParam(required = false) DonationOfferStatus status) {
+//        Page<DonationOffersRequestDto> result = donationOfferService.search(page, size, search, category, type, status);
+//
+//        return ResponseEntity.ok(result);
+//    }
 
-                                                                             @RequestParam(required = false) String search, @RequestParam(required = false) String category, @RequestParam(required = false) String type, @RequestParam(required = false) DonationOfferStatus status) {
-        Page<DonationOffersRequestDto> result = donationOfferService.search(page, size, search, category, type, status);
+    @GetMapping("/moderator/offers")
+    public ResponseEntity<Page<DonationOffersRequestDto>> listDonationOffers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String type,
+
+            @RequestParam(required = false) DonationOfferStatus status,
+
+            @RequestParam(required = false, defaultValue = "ACTIVE") String view,
+
+            @RequestParam(required = false, defaultValue = "createdAt,desc") String sort
+    ) {
+
+        Page<DonationOffersRequestDto> result =
+                donationOfferService.search(
+                        page, size, search, category, type, status, view, sort
+                );
 
         return ResponseEntity.ok(result);
     }
-
 
     @GetMapping("/moderator/assignments/history")
     public ResponseEntity<Page<ModeratorAssignmentDto>> assignmentHistory(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size, @RequestParam(required = false) AssignmentStatus status) {

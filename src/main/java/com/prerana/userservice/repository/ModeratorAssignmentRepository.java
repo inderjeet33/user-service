@@ -3,6 +3,7 @@ package com.prerana.userservice.repository;
 import java.util.*;
 import com.prerana.userservice.entity.ModeratorAssignmentEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.enums.DonationOfferStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,7 @@ public interface ModeratorAssignmentRepository extends JpaRepository<ModeratorAs
             List<AssignmentStatus> statuses
     );
 
+    List<ModeratorAssignmentEntity> findByReceiver_IdAndDonationRequest_StatusInOrderByCreatedAtDesc(Long id, List<DonationOfferStatus> statuses);
     List<ModeratorAssignmentEntity> findByDonationRequest_IdOrderByCreatedAtDesc(Long donationRequestId);
 
     Optional<ModeratorAssignmentEntity> findTopByDonationRequest_IdOrderByCreatedAtDesc(Long donationRequestId);

@@ -62,4 +62,5 @@ public class CampaignEntity extends BaseEntity {
 
     private Integer priority;
 
+    private LocalDateTime expiresAt;
 }

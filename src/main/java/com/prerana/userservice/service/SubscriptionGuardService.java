@@ -4,6 +4,7 @@ import com.prerana.userservice.entity.SubscriptionFeatureEntity;
 import com.prerana.userservice.entity.UserSubscriptionEntity;
 import com.prerana.userservice.enums.DonationOfferStatus;
 import com.prerana.userservice.enums.FeatureKey;
+import com.prerana.userservice.enums.HelpRequestStatus;
 import com.prerana.userservice.exceptions.SubscriptionLimitExceededException;
 import com.prerana.userservice.repository.DonationOfferRepository;
 import com.prerana.userservice.repository.HelpRequestRepository;
@@ -51,7 +52,7 @@ public class SubscriptionGuardService {
         if ("UNLIMITED".equals(feature.getFeatureValue())) return;
 
         long used =
-                helpRequestRepo.countByUser_Id(userId);
+                helpRequestRepo.countByUser_IdAndStatusIn(userId,List.of(HelpRequestStatus.OPEN,HelpRequestStatus.IN_PROGRESS,HelpRequestStatus.APPROVED,HelpRequestStatus.ASSIGNED,HelpRequestStatus.COMPLETED));
 
         int limit = Integer.parseInt(feature.getFeatureValue());
 

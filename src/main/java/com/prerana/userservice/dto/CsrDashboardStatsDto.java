@@ -21,5 +21,8 @@ public class CsrDashboardStatsDto {
     // Impact
     private Long ngosWorkedWith;
     private Long livesImpacted; // placeholder / derived later
+
+    private Long priority;
+    private String planCode;
 }
 

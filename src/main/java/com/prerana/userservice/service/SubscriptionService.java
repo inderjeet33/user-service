@@ -181,6 +181,30 @@ public class SubscriptionService {
     }
 
 
+    @Transactional
+    public void ensureFreeSubscriptionIfMissing(UserEntity user) {
+
+        boolean hasActive =
+                userSubRepo.findByUser_IdAndActiveTrue(user.getId()).isPresent();
+
+        if (hasActive) return;
+
+        SubscriptionPlanEntity freePlan =
+                planRepo.findByCodeAndUserType("FREE", user.getUserType())
+                        .orElseThrow(() -> new RuntimeException("FREE plan missing"));
+
+        UserSubscriptionEntity sub = UserSubscriptionEntity.builder()
+                .user(user)
+                .plan(freePlan)
+                .status(SubscriptionStatus.ACTIVE)
+                .startDate(LocalDateTime.now())
+                .endDate(LocalDateTime.now().plusDays(freePlan.getDurationDays()))
+                .active(true)
+                .build();
+
+        userSubRepo.save(sub);
+    }
+
     public UserSubscriptionDto getMySubscription(Long userId) {
 
         UserSubscriptionEntity sub = getOrCreateActiveSubscription(userId);

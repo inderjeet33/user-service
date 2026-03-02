@@ -2,6 +2,7 @@ package com.prerana.userservice.repository;
 
 import com.prerana.userservice.entity.VolunteerAssignmentEntity;
 import com.prerana.userservice.enums.AssignmentStatus;
+import com.prerana.userservice.enums.VolunteerOfferStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +27,9 @@ public interface VolunteerAssignmentRepository
             Long requestId,
             List<AssignmentStatus> statuses
     );
+
+    List<VolunteerAssignmentEntity>findByReceiver_IdAndStatusInOrderByCreatedAtDesc(Long receiverId, List<AssignmentStatus> status);
+
 
     @Query("SELECT  v FROM VolunteerAssignmentEntity v " +
             "WHERE v.receiver.id = :ngoUserId " +

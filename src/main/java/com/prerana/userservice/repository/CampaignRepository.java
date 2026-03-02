@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,11 @@ public interface CampaignRepository extends JpaRepository<CampaignEntity,Long> {
     long countByOwner_IdAndStatus(Long ngoId, CampaignStatus status);
 
     List<CampaignEntity> findByStatus(CampaignStatus status);
+
+    List<CampaignEntity> findByStatusAndExpiresAtAfter(
+            CampaignStatus status,
+            LocalDateTime now
+    );
 
 //    List<CampaignEntity> findByStatusOrderByPriority
 
@@ -55,16 +61,27 @@ public interface CampaignRepository extends JpaRepository<CampaignEntity,Long> {
             ON sp = us.plan
         WHERE c.status = :status
           AND us.active = true
+              AND c.expiresAt > :now
         ORDER BY sp.priority DESC, c.createdAt DESC
     """)
-        List<CampaignEntity> findByStatusWithNgoPriority(
-                @Param("status") CampaignStatus status
+        List<CampaignEntity> findByStatusWithNgoPriorityAndExpiresAtAfter(
+                @Param("status") CampaignStatus status,
+                @Param("now") LocalDateTime now
         );
 
 
+    List<CampaignEntity> findByStatusAndExpiresAtAfterOrderByPriorityDescCreatedAtDesc(
+            CampaignStatus status,
+            LocalDateTime now
+    );
 
     List<CampaignEntity> findByStatusOrderByPriorityDescCreatedAtDesc(
             CampaignStatus status
+    );
+
+    List<CampaignEntity> findByStatusAndExpiresAtBefore(
+            CampaignStatus status,
+            LocalDateTime time
     );
 
 }

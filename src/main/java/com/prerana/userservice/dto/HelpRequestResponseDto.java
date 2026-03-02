@@ -2,6 +2,7 @@ package com.prerana.userservice.dto;
 
 import com.prerana.userservice.enums.HelpRequestStatus;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Data
 @Builder
